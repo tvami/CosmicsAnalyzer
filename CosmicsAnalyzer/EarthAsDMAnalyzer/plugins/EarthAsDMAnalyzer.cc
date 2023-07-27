@@ -27,13 +27,18 @@
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
+
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+
 
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
 
 #include "Geometry/Records/interface/MuonGeometryRecord.h"
 
@@ -45,6 +50,10 @@
 //
 // class declaration
 //
+
+const int kTrackNMax = 10000;
+const int kGenNMax = 10000;
+const int kMuonNMax = 10000;
 
 class EarthAsDMAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
@@ -59,6 +68,7 @@ private:
   void endJob() override;
 
   // ----------member data ---------------------------
+  edm::EDGetTokenT< std::vector<reco::GenParticle> > genParticlesToken_;
   edm::EDGetTokenT<std::vector<reco::Muon>> muonToken_;
   edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;
   edm::EDGetTokenT< CSCSegmentCollection > m_cscSegmentToken;
@@ -73,15 +83,32 @@ private:
   unsigned int runNumber_;
   unsigned int lsNumber_;
   uint32_t eventNumber_;
-  std::vector<float> muonPhis_;
-  std::vector<float> muonPt_;
-  std::vector<float> muonCombnDof_;
-  std::vector<float> muonCombTimeAtIpInOut_;
-  std::vector<float> muonCombTimeAtIpInOutErr_;
-  std::vector<float> muonCombTimeAtIpOutIn_;
-  std::vector<float> muonCombTimeAtIpOutInErr_;
-  std::vector<float> muonCombinedInvBeta_;
-  std::vector<float> muonCombinedFreeInvBeta_;
+
+  
+  int      gen_n_;
+  int      gen_pdg_[kGenNMax];
+  float    gen_pt_[kGenNMax];
+  float    gen_eta_[kGenNMax];
+  float    gen_phi_[kGenNMax];
+  float    gen_mass_[kGenNMax];
+  bool     gen_isHardProcess_[kGenNMax];
+  int      gen_status_[kGenNMax];
+  int      gen_moth_pdg_[kGenNMax];
+  int      gen_daughter_n_[kGenNMax];
+  int      gen_daughter_pdg_[kGenNMax];
+  
+  int      muon_n_;
+  float    muon_pt_[kMuonNMax];
+  float    muon_p_[kMuonNMax];
+  float    muon_eta_[kMuonNMax];
+  float    muon_phi_[kMuonNMax];
+  float    muon_comb_ndof_[kMuonNMax];
+  float    muon_comb_timeAtIpInOut_[kMuonNMax];
+  float    muon_comb_timeAtIpInOutErr_[kMuonNMax];
+  float    muon_comb_timeAtIpOutIn_[kMuonNMax];
+  float    muon_comb_timeAtIpOutInErr_[kMuonNMax];
+  float    muon_comb_invBeta_[kMuonNMax];
+  float    muon_comb_freeInvBeta_[kMuonNMax];
 
 };
 
@@ -89,6 +116,7 @@ private:
 // constructors and destructor
 //
 EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
+ genParticlesToken_(consumes< std::vector<reco::GenParticle> >( edm::InputTag("genParticles") )),
  muonToken_(consumes<std::vector<reco::Muon>>(iConfig.getParameter<edm::InputTag>("muonCollection"))),
  muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("muonTimeCollection"))),
  m_cscSegmentToken(consumes< CSCSegmentCollection >( edm::InputTag("cscSegments") )),
@@ -105,6 +133,7 @@ EarthAsDMAnalyzer::~EarthAsDMAnalyzer()  = default;
 // ------------ method called for each event  ------------
 void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
   int verbose = 0;
+  bool is_data_ = true;
   
   runNumber_ = iEvent.id().run();
   lsNumber_ = iEvent.id().luminosityBlock();
@@ -125,49 +154,42 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   
   muonDTGeom = &iSetup.getData(muonDTGeomToken_);
   
-//  cout << "This event has " << muonCollectionHandle->size() << " muons and " << dtSegments->size() << " segments" << endl;
-
-//  for (const auto& muon : *muons) {
+  edm::Handle< std::vector<reco::GenParticle> > genColl;
+  gen_n_ = 0;
+  if (!is_data_) {
+    iEvent.getByToken(genParticlesToken_, genColl);
+    for (unsigned int i = 0; i < genColl->size(); i++) {
+//      const reco::GenParticle* genCand = &(*genColl)[i];
+      gen_n_++;
+    }
+  }
+  
+  muon_n_ = 0;
   for (unsigned int i = 0; i < muonCollectionHandle->size(); i++) {
     reco::MuonRef muon  = reco::MuonRef( muonCollectionHandle, i );
-    float phi = muon->phi();
-    float pt = muon->pt();
-    muonPhis_.push_back(phi);
-    muonPt_.push_back(pt);
+    muon_pt_[muon_n_] = muon->pt();
+    muon_p_[muon_n_] = muon->p();
+    muon_eta_[muon_n_] = muon->eta();
+    muon_phi_[muon_n_] = muon->phi();
     
 //    const reco::MuonTime time = muon->time();
 //    const reco::MuonTime rpcTime = muon->rpcTime();
-    float nDof = 0.;
-    float timeAtIpInOut = 9999.;
-    float timeAtIpInOutErr = 9999.;
-    float timeAtIpOutIn = 9999.;
-    float timeAtIpOutInErr = 9999.;
-    float combinedInvBeta = 9999.;
-    float combinedFreeInvBeta = 9999.;
+
     if (tofMap.isValid()) {
       const reco::MuonTimeExtra* combinedTimeExtra = NULL;
       combinedTimeExtra = &tofMap->get(muon.key());
 
-      
-    nDof = combinedTimeExtra->nDof();
-    timeAtIpInOut = combinedTimeExtra->timeAtIpInOut();
-    timeAtIpInOutErr = combinedTimeExtra->timeAtIpInOutErr();
-    timeAtIpOutIn = combinedTimeExtra->timeAtIpOutIn();
-    timeAtIpOutInErr = combinedTimeExtra->timeAtIpOutInErr();
-    combinedInvBeta = combinedTimeExtra->inverseBeta();
-    combinedFreeInvBeta = combinedTimeExtra->freeInverseBeta();
+      muon_comb_ndof_[muon_n_] = combinedTimeExtra->nDof();
+      muon_comb_timeAtIpInOut_[muon_n_] = combinedTimeExtra->timeAtIpInOut();
+      muon_comb_timeAtIpInOutErr_[muon_n_] = combinedTimeExtra->timeAtIpInOutErr();
+      muon_comb_timeAtIpOutIn_[muon_n_] = combinedTimeExtra->timeAtIpOutIn();
+      muon_comb_timeAtIpOutInErr_[muon_n_] = combinedTimeExtra->timeAtIpOutInErr();
+      muon_comb_invBeta_[muon_n_] = combinedTimeExtra->inverseBeta();
+      muon_comb_freeInvBeta_[muon_n_] = combinedTimeExtra->freeInverseBeta();
       // Sign convention for muonCombinedFreeInvBeta_:
       //   positive - outward moving particle
       //   negative - inward moving particle
     }
-    
-    muonCombnDof_.push_back(nDof);
-    muonCombTimeAtIpInOut_.push_back(timeAtIpInOut);
-    muonCombTimeAtIpInOutErr_.push_back(timeAtIpInOutErr);
-    muonCombTimeAtIpOutIn_.push_back(timeAtIpOutIn);
-    muonCombTimeAtIpOutInErr_.push_back(timeAtIpOutInErr);
-    muonCombinedInvBeta_.push_back(combinedInvBeta);
-    muonCombinedFreeInvBeta_.push_back(combinedFreeInvBeta);
     
 //    if (nDof > 1000) {
 //      std::cout << "for i= " << i << " nDof is high! " << nDof << " phi " << phi << " and pt " << pt << std::endl;
@@ -176,6 +198,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 //    }
 //    if (timeAtIpInOutErr > timeAtIpOutInErr)
 //      return OutsideIn;
+    muon_n_++ ;
   }
 
   for (unsigned int c=0; c<cscSegments->size(); c++) {
@@ -187,6 +210,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 //    cout << " X: " << point.x() << endl;
   }
   
+  //  cout << "This event has " << muonCollectionHandle->size() << " muons and " << dtSegments->size() << " segments" << endl;
   for (unsigned int d=0; d<dtSegments->size(); d++) {
     DTRecSegment4DRef SegRef  = DTRecSegment4DRef( dtSegments, d );
     susybsm::MuonSegment muonSegment;
@@ -196,33 +220,49 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     GlobalPoint point = dtDet->toGlobal(SegRef->localPosition());
     if (verbose > 1) cout << " X: " << point.x() << endl;
   }
-
+  outputTree_->Fill();
 }
 
 // ------------ method called once each job just before starting event loop  ------------
 void EarthAsDMAnalyzer::beginJob() {
-  outputFile_ = new TFile("ntuple.root", "RECREATE");
-  outputTree_ = new TTree("tree", "Tree for this analysis");
-  outputTree_->Branch("runNumber", &runNumber_);
-  outputTree_->Branch("lsNumber", &lsNumber_);
-  outputTree_->Branch("eventNumber", &eventNumber_);
-  outputTree_->Branch("muonPhi", &muonPhis_);
-  outputTree_->Branch("muonPt", &muonPt_);
-  outputTree_->Branch("muonCombnDof", &muonCombnDof_);
-  outputTree_->Branch("muonCombTimeAtIpInOut", &muonCombTimeAtIpInOut_);
-  outputTree_->Branch("muonCombTimeAtIpInOutErr", &muonCombTimeAtIpInOutErr_);
-  outputTree_->Branch("muonCombTimeAtIpOutIn", &muonCombTimeAtIpOutIn_);
-  outputTree_->Branch("muonCombTimeAtIpOutInErr", &muonCombTimeAtIpOutInErr_);
-  outputTree_->Branch("muonCombinedInvBeta", &muonCombinedInvBeta_);
-  outputTree_->Branch("muonCombinedFreeInvBeta", &muonCombinedFreeInvBeta_);
+//  outputFile_ = new TFile("ntuple.root", "RECREATE");
+//  outputTree_ = new TTree("tree", "Tree for this analysis");
+  usesResource("TFileService");
+  edm::Service<TFileService> fs;
+  outputTree_ = fs->make<TTree>("tree", "tree");
+  outputTree_->Branch("run",    &runNumber_);
+  outputTree_->Branch("ls",     &lsNumber_);
+  outputTree_->Branch("event",  &eventNumber_);
+  
+  outputTree_ -> Branch ( "gen_n",            &gen_n_) ;
+  outputTree_ -> Branch ( "gen_pdg",          gen_pdg_,          "gen_pdg[gen_n]/I");
+  outputTree_ -> Branch ( "gen_pt",           gen_pt_,           "gen_pt[gen_n]/F");
+  outputTree_ -> Branch ( "gen_eta",          gen_eta_,          "gen_eta[gen_n]/F");
+  outputTree_ -> Branch ( "gen_phi",          gen_phi_,          "gen_phi[gen_n]/F");
+  outputTree_ -> Branch ( "gen_mass",         gen_mass_,         "gen_mass[gen_n]/F");
+  outputTree_ -> Branch ( "gen_isHardProcess",gen_isHardProcess_,"gen_isHardProcess[gen_n]/O");
+  outputTree_ -> Branch ( "gen_status",       gen_status_,       "gen_status[gen_n]/I");
+  outputTree_ -> Branch ( "gen_moth_pdg",     gen_moth_pdg_,     "gen_moth_pdg[gen_n]/I");
+  outputTree_ -> Branch ( "gen_daughter_n",   gen_daughter_n_,   "gen_daughter_n[gen_n]/I");
+  outputTree_ -> Branch ( "gen_daughter_pdg", gen_daughter_pdg_, "gen_daughter_pdg[gen_n]/I");
+  
+  outputTree_ -> Branch ( "muon_n",                     &muon_n_) ;
+  outputTree_ -> Branch ( "muon_pt",                    muon_pt_,                   "muon_pt[muon_n]/F");
+  outputTree_ -> Branch ( "muon_p",                     muon_p_,                    "muon_p[muon_n]/F");
+  outputTree_ -> Branch ( "muon_eta",                   muon_eta_,                  "muon_eta[muon_n]/F");
+  outputTree_ -> Branch ( "muon_phi",                   muon_phi_,                  "muon_phi[muon_n]/F");
+  outputTree_ -> Branch ( "muon_comb_ndof",             muon_comb_ndof_,            "muon_comb_ndof[muon_n]/F");
+  outputTree_ -> Branch ( "muon_comb_timeAtIpInOut",    muon_comb_timeAtIpInOut_,   "muon_comb_timeAtIpInOut[muon_n]/F");
+  outputTree_ -> Branch ( "muon_comb_timeAtIpInOutErr", muon_comb_timeAtIpInOutErr_,"muon_comb_timeAtIpInOutErr[muon_n]/F");
+  outputTree_ -> Branch ( "muon_comb_timeAtIpOutIn",    muon_comb_timeAtIpOutIn_,   "muon_comb_timeAtIpOutIn[muon_n]/F");
+  outputTree_ -> Branch ( "muon_comb_timeAtIpOutInErr", muon_comb_timeAtIpOutInErr_,"muon_comb_timeAtIpOutInErr[muon_n]/F");
+  outputTree_ -> Branch ( "muon_comb_invBeta",          muon_comb_invBeta_,         "muon_comb_invBeta[muon_n]/F");
+  outputTree_ -> Branch ( "muon_comb_freeInvBeta",      muon_comb_freeInvBeta_,     "muon_comb_freeInvBeta[muon_n]/F");
   
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void EarthAsDMAnalyzer::endJob() {
-  outputTree_->Fill();
-  outputFile_->Write();
-  outputFile_->Close();
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
