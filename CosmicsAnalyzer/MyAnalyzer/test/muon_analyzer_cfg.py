@@ -23,7 +23,8 @@ process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")
 )
 
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(15000))
+#process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(15000))
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1500))
 
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, options.GTAG, '')

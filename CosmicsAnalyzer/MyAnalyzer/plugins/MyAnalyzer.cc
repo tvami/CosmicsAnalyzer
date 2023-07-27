@@ -77,6 +77,9 @@ private:
   
   TFile* outputFile_;
   TTree* outputTree_;
+  unsigned int runNumber_;
+  unsigned int lsNumber_;
+  uint32_t eventNumber_;
   std::vector<float> muonPhis_;
   std::vector<float> muonPt_;
   std::vector<float> muonCombnDof_;
@@ -122,6 +125,11 @@ MyAnalyzer::~MyAnalyzer() {
 // ------------ method called for each event  ------------
 void MyAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
   int verbose = 0;
+  
+  runNumber_ = iEvent.id().run();
+  lsNumber_ = iEvent.id().luminosityBlock();
+  eventNumber_ = iEvent.id().event();
+  
   using namespace std;
   edm::Handle<reco::MuonCollection> muonCollectionHandle;
   iEvent.getByToken(muonToken_,muonCollectionHandle);
@@ -215,6 +223,9 @@ void MyAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 void MyAnalyzer::beginJob() {
   outputFile_ = new TFile("muon_phi_ntuple.root", "RECREATE");
   outputTree_ = new TTree("MuonPhiTree", "Muon Phi Distribution");
+  outputTree_->Branch("runNumber", &runNumber_);
+  outputTree_->Branch("lsNumber", &lsNumber_);
+  outputTree_->Branch("eventNumber", &eventNumber_);
   outputTree_->Branch("muonPhi", &muonPhis_);
   outputTree_->Branch("muonPt", &muonPt_);
   outputTree_->Branch("muonCombnDof", &muonCombnDof_);
