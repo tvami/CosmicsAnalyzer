@@ -21,8 +21,8 @@
 #include <vector>
 
 // user include files
-#include "AnalysisDataFormats/SUSYBSMObjects/interface/MuonSegment.h"
 #include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/MuonDetId/interface/MuonSubdetId.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
@@ -31,7 +31,6 @@
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
-
 
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -54,6 +53,7 @@
 const int kTrackNMax = 10000;
 const int kGenNMax = 10000;
 const int kMuonNMax = 10000;
+const int kSegmentNMax = 100;
 
 class EarthAsDMAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
@@ -71,8 +71,8 @@ private:
   edm::EDGetTokenT< std::vector<reco::GenParticle> > genParticlesToken_;
   edm::EDGetTokenT<std::vector<reco::Muon>> muonToken_;
   edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;
-  edm::EDGetTokenT< CSCSegmentCollection > m_cscSegmentToken;
-  edm::EDGetTokenT< DTRecSegment4DCollection > m_dtSegmentToken;
+  edm::EDGetTokenT< CSCSegmentCollection > cscSegmentToken_;
+  edm::EDGetTokenT< DTRecSegment4DCollection > dtSegmentToken_;
   edm::ESGetToken<CSCGeometry, MuonGeometryRecord> muonCSCGeomToken_;
   
   edm::ESGetToken<DTGeometry, MuonGeometryRecord> muonDTGeomToken_;
@@ -109,6 +109,12 @@ private:
   float    muon_comb_timeAtIpOutInErr_[kMuonNMax];
   float    muon_comb_invBeta_[kMuonNMax];
   float    muon_comb_freeInvBeta_[kMuonNMax];
+  
+  int      muon_dtSeg_n_;
+  float    muon_dtSeg_x_[kMuonNMax][kSegmentNMax];
+  float    muon_dtSeg_y_[kMuonNMax][kSegmentNMax];
+  float    muon_dtSeg_z_[kMuonNMax][kSegmentNMax];
+  
 
 };
 
@@ -119,8 +125,8 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  genParticlesToken_(consumes< std::vector<reco::GenParticle> >( edm::InputTag("genParticles") )),
  muonToken_(consumes<std::vector<reco::Muon>>(iConfig.getParameter<edm::InputTag>("muonCollection"))),
  muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("muonTimeCollection"))),
- m_cscSegmentToken(consumes< CSCSegmentCollection >( edm::InputTag("cscSegments") )),
- m_dtSegmentToken(consumes< DTRecSegment4DCollection >( edm::InputTag("dt4DSegments") )),
+ cscSegmentToken_(consumes< CSCSegmentCollection >( edm::InputTag("cscSegments") )),
+ dtSegmentToken_(consumes< DTRecSegment4DCollection >( edm::InputTag("dt4DSegments") )),
  muonDTGeomToken_(esConsumes())
 {}
 
@@ -132,7 +138,7 @@ EarthAsDMAnalyzer::~EarthAsDMAnalyzer()  = default;
 
 // ------------ method called for each event  ------------
 void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
-  int verbose = 0;
+//  int verbose = 0;
   bool is_data_ = true;
   
   runNumber_ = iEvent.id().run();
@@ -147,10 +153,10 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   iEvent.getByToken(muonTimeToken_, tofMap);
   
   edm::Handle<CSCSegmentCollection> cscSegments;
-  iEvent.getByToken(m_cscSegmentToken, cscSegments);
+  iEvent.getByToken(cscSegmentToken_, cscSegments);
   
   edm::Handle<DTRecSegment4DCollection> dtSegments;
-  iEvent.getByToken(m_dtSegmentToken, dtSegments);
+  iEvent.getByToken(dtSegmentToken_, dtSegments);
   
   muonDTGeom = &iSetup.getData(muonDTGeomToken_);
   
@@ -190,6 +196,20 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       //   positive - outward moving particle
       //   negative - inward moving particle
     }
+    muon_dtSeg_n_ = 0;
+    for (unsigned int d=0; d<dtSegments->size(); d++) {
+      DTRecSegment4DRef segRef  = DTRecSegment4DRef( dtSegments, d );
+      const GeomDet* dtDet = muonDTGeom->idToDet(segRef->geographicalId());
+      GlobalPoint globalPoint = dtDet->toGlobal(segRef->localPosition());
+      if (deltaR(globalPoint.eta(),globalPoint.phi(),muon->eta(),muon->phi()) < 0.15) {
+        muon_dtSeg_x_[muon_n_][muon_dtSeg_n_] = globalPoint.x();
+        muon_dtSeg_y_[muon_n_][muon_dtSeg_n_] = globalPoint.y();
+        muon_dtSeg_z_[muon_n_][muon_dtSeg_n_] = globalPoint.z();
+      }
+      muon_dtSeg_n_++;
+    }
+    
+    // TODO: Should be a check if there are segments that dont belong to any track!!
     
 //    if (nDof > 1000) {
 //      std::cout << "for i= " << i << " nDof is high! " << nDof << " phi " << phi << " and pt " << pt << std::endl;
@@ -203,23 +223,14 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   for (unsigned int c=0; c<cscSegments->size(); c++) {
     CSCSegmentRef segRef  = CSCSegmentRef( cscSegments, c );
-    susybsm::MuonSegment muonSegment;
-    muonSegment.setCSCSegmentRef(segRef);
 //    const GeomDet* cscDet = cscGeom->idToDet(SegRef->geographicalId());
 //    GlobalPoint point = cscDet->toGlobal(SegRef->localPosition());
 //    cout << " X: " << point.x() << endl;
   }
   
   //  cout << "This event has " << muonCollectionHandle->size() << " muons and " << dtSegments->size() << " segments" << endl;
-  for (unsigned int d=0; d<dtSegments->size(); d++) {
-    DTRecSegment4DRef SegRef  = DTRecSegment4DRef( dtSegments, d );
-    susybsm::MuonSegment muonSegment;
-    muonSegment.setDTSegmentRef(SegRef);
-    
-    const GeomDet* dtDet = muonDTGeom->idToDet(SegRef->geographicalId());
-    GlobalPoint point = dtDet->toGlobal(SegRef->localPosition());
-    if (verbose > 1) cout << " X: " << point.x() << endl;
-  }
+  
+  // Fill the tree at the end of every event
   outputTree_->Fill();
 }
 
@@ -246,7 +257,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "gen_daughter_n",   gen_daughter_n_,   "gen_daughter_n[gen_n]/I");
   outputTree_ -> Branch ( "gen_daughter_pdg", gen_daughter_pdg_, "gen_daughter_pdg[gen_n]/I");
   
-  outputTree_ -> Branch ( "muon_n",                     &muon_n_) ;
+  outputTree_ -> Branch ( "muon_n",                     &muon_n_);
   outputTree_ -> Branch ( "muon_pt",                    muon_pt_,                   "muon_pt[muon_n]/F");
   outputTree_ -> Branch ( "muon_p",                     muon_p_,                    "muon_p[muon_n]/F");
   outputTree_ -> Branch ( "muon_eta",                   muon_eta_,                  "muon_eta[muon_n]/F");
@@ -258,6 +269,11 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_comb_timeAtIpOutInErr", muon_comb_timeAtIpOutInErr_,"muon_comb_timeAtIpOutInErr[muon_n]/F");
   outputTree_ -> Branch ( "muon_comb_invBeta",          muon_comb_invBeta_,         "muon_comb_invBeta[muon_n]/F");
   outputTree_ -> Branch ( "muon_comb_freeInvBeta",      muon_comb_freeInvBeta_,     "muon_comb_freeInvBeta[muon_n]/F");
+  
+  outputTree_ -> Branch ( "muon_dtSeg_n",      &muon_dtSeg_n_);
+  outputTree_ -> Branch ( "muon_dtSeg_x",      muon_dtSeg_x_,     "muon_dtSeg_x[muon_n][20]/F");
+  outputTree_ -> Branch ( "muon_dtSeg_y",      muon_dtSeg_y_,     "muon_dtSeg_y[muon_n][20]/F");
+  outputTree_ -> Branch ( "muon_dtSeg_z",      muon_dtSeg_z_,     "muon_dtSeg_z[muon_n][20]/F");
   
 }
 
