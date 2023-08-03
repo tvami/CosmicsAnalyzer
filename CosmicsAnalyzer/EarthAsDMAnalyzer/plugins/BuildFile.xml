@@ -1,5 +1,6 @@
 <use name="CommonTools/UtilAlgos"/>
 <use name="DataFormats/TrackReco"/>
+<use name="DataFormats/MuonReco"/>
 <use name="DataFormats/DTRecHit"/>
 <use name="FWCore/Framework"/>
 <use name="FWCore/ParameterSet"/>
