@@ -75,6 +75,7 @@ private:
 
   // ----------member data ---------------------------
   int verbose_;
+  int isData_;
   edm::EDGetTokenT< std::vector<reco::GenParticle> > genParticlesToken_;
   edm::EDGetTokenT<std::vector<reco::Muon>> muonToken_;
   edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;
@@ -133,6 +134,7 @@ private:
 //
 EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  verbose_(iConfig.getUntrackedParameter<int>("verbosityLevel")),
+ isData_(iConfig.getUntrackedParameter<int>("isData")),
  genParticlesToken_(consumes< std::vector<reco::GenParticle> >( edm::InputTag("genParticles") )),
  muonToken_(consumes<std::vector<reco::Muon>>(iConfig.getParameter<edm::InputTag>("muonCollection"))),
  muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("muonTimeCollection"))),
@@ -152,9 +154,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   using namespace std;
   using namespace edm;
   static constexpr const char* const MOD = "Analyzer";
-  
-  bool is_data_ = true;
-  
+    
   runNumber_ = iEvent.id().run();
   lsNumber_ = iEvent.id().luminosityBlock();
   eventNumber_ = iEvent.id().event();
@@ -178,13 +178,33 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   
   edm::Handle< std::vector<reco::GenParticle> > genColl;
   gen_n_ = 0;
-  if (!is_data_) {
+  if (!isData_) {
     iEvent.getByToken(genParticlesToken_, genColl);
     for (unsigned int i = 0; i < genColl->size(); i++) {
-//      const reco::GenParticle* genCand = &(*genColl)[i];
+      const reco::GenParticle* genCand = &(*genColl)[i];
+      gen_pdg_[i] = genCand->pdgId();
+      gen_pt_[i] = genCand->pt();
+      gen_eta_[i] = genCand->eta();
+      gen_phi_[i] = genCand->phi();
+      gen_mass_[i] = genCand->mass();
+      gen_isHardProcess_[i] = genCand->isHardProcess();
+      gen_status_[i] = genCand->status();
+      if (genCand->numberOfMothers() > 0) {
+        gen_moth_pdg_[i] = genCand->mother()->pdgId();
+      } else {
+        gen_moth_pdg_[i] = 0;
+      }
+      gen_daughter_n_[i] = genCand->numberOfDaughters();
+      if (genCand->numberOfDaughters() > 0) {
+        gen_daughter_pdg_[i] = genCand->daughter(0)->pdgId();
+      } else {
+        gen_daughter_pdg_[i] = 0;
+      }
+
       gen_n_++;
     }
   }
+  if (gen_n_ > kGenNMax) cout << "!!!! please increase kGenNMax to " << gen_n_ << endl;
   
   muon_n_ = 0;
   for (unsigned int i = 0; i < muonCollectionHandle->size(); i++) {
@@ -333,6 +353,8 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   desc.setComment("Analyzer for cosmics searches");
   desc.addUntracked("verbosityLevel", 6)
   ->setComment("Higher the integer more verbose");
+  desc.addUntracked("isData", 0)
+  ->setComment("0 means MC, 1 means data");
   desc.add("muonCollection", edm::InputTag("splitMuons"))
 //  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
 //  desc.add("muonCollection", edm::InputTag("splitMuons"))
