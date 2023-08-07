@@ -99,8 +99,6 @@ private:
   edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
   edm::ESGetToken<DTGeometry, MuonGeometryRecord> muonDTGeomToken_;
   const DTGeometry *muonDTGeom;
-  int verbose_;
-  int isData_;
 
   TFile* outputFile_;
   TTree* outputTree_;
@@ -136,7 +134,7 @@ private:
   float    muon_comb_invBeta_[kMuonNMax];
   float    muon_comb_freeInvBeta_[kMuonNMax];
   
-  int      muon_dtSeg_n_;
+  // int      muon_dtSeg_n_;
   float    muon_dtSeg_x_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_y_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_z_[kMuonNMax][kSegmentNMax];
@@ -151,7 +149,7 @@ private:
   float    muon_dtSeg_globY_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_globZ_[kMuonNMax][kSegmentNMax];
 
-  bool     HLT_Mu50;
+  bool     trig_HLT_Mu50_;
 
 
 };
@@ -311,10 +309,10 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       if (verbose_ > 3) LogPrint(MOD)  << "  >> This track had " << dtSeg_n_ << " segments";
     } // end condition on muon having valid match
   
-    if (tofMap.isValid()) {
-      const reco::MuonTimeExtra* combinedTimeExtra = NULL;
-      combinedTimeExtra = &tofMap->get(muon.key());
-    if (verbose_ > 2) LogPrint(MOD) << "  >> muon_pt_ " << muon->pt() << " muon_eta_ " << muon->eta() << " muon_phi_ " << muon->phi();
+    // if (tofMap.isValid()) {
+    //   const reco::MuonTimeExtra* combinedTimeExtra = NULL;
+    //   combinedTimeExtra = &tofMap->get(muon.key());
+    // if (verbose_ > 2) LogPrint(MOD) << "  >> muon_pt_ " << muon->pt() << " muon_eta_ " << muon->eta() << " muon_phi_ " << muon->phi();
     
 //    const reco::MuonTime time = muon->time();
 //    const reco::MuonTime rpcTime = muon->rpcTime();
@@ -400,7 +398,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     // trigInfo_ = 0;
 
 
-  bool HLT_Mu50 = false;
+  trig_HLT_Mu50_ = false;
 
   // const int triggerIndex = triggerNames.triggerIndex("HLT_Mu50");
   // TTree->SetBranchAddress("HLT_Mu50", &HLT_Mu50);
@@ -416,8 +414,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   for (unsigned int i = 0; i < triggerH->size(); i++) {
     if (TString(triggerNames.triggerName(i)).Contains("HLT_Mu50_v") && triggerH->accept(i)){
-      HLT_Mu50 = true;
-      cout << " HLT_Mu50 True? " << HLT_Mu50 << endl; 
+      trig_HLT_Mu50_ = true;
+      //cout << " HLT_Mu50 True? " << HLT_Mu50 << endl; 
     }
 
     // if (TString(triggerNames.triggerName(i)).Contains("HLT_PFMET120_PFMHT120_IDTight_v") && triggerH->accept(i))
@@ -495,7 +493,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_z",      muon_dtSeg_z_,     "muon_dtSeg_z[muon_n][20]/F");
   outputTree_ -> Branch ( "muon_tofMap_found",          muon_tofMap_found_,         "muon_tofMap_found[muon_n]/F");
 
-  outputTree_ -> Branch ( "hlt_mu50",     &HLT_Mu50) ;
+  outputTree_ -> Branch ( "trig_HLT_Mu50",     &trig_HLT_Mu50_, "trig_HLT_Mu50/O") ;
 
 }
 
@@ -510,10 +508,10 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   ->setComment("Higher the integer more verbose");
   desc.addUntracked("isData", 0)
   ->setComment("0 means MC, 1 means data");
-  desc.addUntracked("verbosityLevel", 6)
-  ->setComment("Higher the integer more verbose");
-  desc.addUntracked("isData", 0)
-  ->setComment("0 means MC, 1 means data");
+  // // desc.addUntracked("verbosityLevel", 6)
+  // // ->setComment("Higher the integer more verbose");
+  // desc.addUntracked("isData", 0)
+  // ->setComment("0 means MC, 1 means data");
 //  desc.add("muonCollection", edm::InputTag("splitMuons"))
 //  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
   desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
