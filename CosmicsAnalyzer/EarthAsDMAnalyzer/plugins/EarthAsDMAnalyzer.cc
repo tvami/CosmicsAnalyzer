@@ -134,7 +134,6 @@ private:
   float    muon_comb_invBeta_[kMuonNMax];
   float    muon_comb_freeInvBeta_[kMuonNMax];
   
-  // int      muon_dtSeg_n_;
   float    muon_dtSeg_x_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_y_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_z_[kMuonNMax][kSegmentNMax];
@@ -508,10 +507,6 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   ->setComment("Higher the integer more verbose");
   desc.addUntracked("isData", 0)
   ->setComment("0 means MC, 1 means data");
-  // // desc.addUntracked("verbosityLevel", 6)
-  // // ->setComment("Higher the integer more verbose");
-  // desc.addUntracked("isData", 0)
-  // ->setComment("0 means MC, 1 means data");
 //  desc.add("muonCollection", edm::InputTag("splitMuons"))
 //  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
   desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
