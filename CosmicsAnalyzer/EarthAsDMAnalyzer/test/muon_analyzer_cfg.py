@@ -60,22 +60,24 @@ process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.load('Configuration.StandardSequences.Services_cff')
 
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring("file:TRK-Run3Winter23Reco-00009-91to180-100000events.root"),
-   # eventsToSkip = cms.untracked.VEventRange("1:1:14704-1:1:14704","1:1:20858-1:1:20858")  # Skip only Event 2085 for the 91 to 180 samples
-    eventsToSkip = cms.untracked.VEventRange("1:1:59049-1:1:59049") #skip for the 0 to 75 samples
+    fileNames = cms.untracked.vstring("file:/afs/cern.ch/user/l/lbrennan/public/MCFileProduction2/CMSSW_13_0_10/src/RootFiles/TRK-Run3Winter23Reco-00009-91to180-100000events.root"), 
+    #TRK-Run3Winter23Reco-00009-0to75-100000events.root and TRK-Run3Winter23Reco-00009-91to180-100000events.root
+   # eventsToSkip = cms.untracked.VEventRange("1:1:409-1:1:409","1:1:1595-1:1:1595","1:1:2369-1:1:2369","1:1:3422-1:1:3422","1:1:4281-1:1:4281","1:1:14704-1:1:14704","1:1:20858-1:1:20858","1:1:88864-1:1:88864")  # Skip only Event 2085 for the 91 to 180 samples for splitmuons
+    eventsToSkip = cms.untracked.VEventRange("1:1:335-1:1:335","1:1:1595-1:1:1595","1:1:14704-1:1:14704","1:1:20858-1:1:20858")  # Skip only Event 2085 for the 91 to 180 samples
+    #eventsToSkip = cms.untracked.VEventRange("1:1:59049-1:1:59049") #skip for the 0 to 75 samples 3422 4281 88864
 )
 #    fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")
 
 #process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(15000))
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1)) #was 100
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 1
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, options.GTAG, '')
 
 process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
-    muonCollection = cms.InputTag("lhcSTAMuons"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
+    muonCollection = cms.InputTag("splitMuons"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
 #    splitMuonsCollection = cms.InputTag("splitMuons"),
 #    muons1LegCollection = cms.InputTag("muons1Leg"),
 #    lhcSTAMuonsCollection = cms.InputTag("lhcSTAMuons"),
@@ -89,7 +91,7 @@ process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
 # process.options.SkipEvent = cms.untracked.vstring('Analyzing track 0')
 
 process.TFileService = cms.Service("TFileService",
-    fileName = cms.string("MCntuple-91to180-lhcSTAMuons.root")
+    fileName = cms.string("MCntuple-91to180-splitMuons-3Triggers-WithEnergy.root")
 )
 #ImportantSampleProductions
 #good100,000Samples1

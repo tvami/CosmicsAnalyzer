@@ -124,6 +124,7 @@ private:
   float    muon_p_[kMuonNMax];
   float    muon_eta_[kMuonNMax];
   float    muon_phi_[kMuonNMax];
+  float    muon_energy_[kMuonNMax];
 
 
   float    muon_comb_ndof_[kMuonNMax];
@@ -148,13 +149,12 @@ private:
   float    muon_dtSeg_globY_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_globZ_[kMuonNMax][kSegmentNMax];
 
-  bool     trig_HLT_Mu50_;
-  bool     trig_HLT_L1SingleMu3_v2_;
-  bool     trig_HLT_L1SingleMu5_v2_;
-  bool     trig_HLT_L1SingleMu7_v2_;
+  bool     trig_HLT_L1SingleMu18_v4_;
+  bool     trig_HLT_L1SingleMu25_v3_;
+//  bool     trig_HLT_L1SingleMu7_v2_;
   bool     trig_HLT_L1SingleMuCosmics_v2_;
-  bool     trig_HLT_L1SingleMuOpen_DT_v3_;
-  bool     trig_HLT_L1SingleMuOpen_v3_;
+  // bool     trig_HLT_L1SingleMuOpen_DT_v3_;
+  // bool     trig_HLT_L1SingleMuOpen_v3_;
 
 
 };
@@ -253,6 +253,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     muon_p_[muon_n_] = muon->p();
     muon_eta_[muon_n_] = muon->eta();
     muon_phi_[muon_n_] = muon->phi();
+    muon_energy_[muon_n_] = muon->energy();
     
     if (verbose_ > 2) LogPrint(MOD) << "  >> muon_pt_ " << muon->pt() << " muon_eta_ " << muon->eta() << " muon_phi_ " << muon->phi();
     
@@ -403,61 +404,39 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     // trigInfo_ = 0;
 
 
-  trig_HLT_Mu50_ = false;
-  trig_HLT_L1SingleMu3_v2_ = false;
-  trig_HLT_L1SingleMu5_v2_ = false;
-  trig_HLT_L1SingleMu7_v2_ = false;
+  trig_HLT_L1SingleMu18_v4_ = false;
+  trig_HLT_L1SingleMu25_v3_ = false;
+  // trig_HLT_L1SingleMu7_v2_ = false;
   trig_HLT_L1SingleMuCosmics_v2_ = false;
-  trig_HLT_L1SingleMuOpen_DT_v3_ = false;
-  trig_HLT_L1SingleMuOpen_v3_ = false;
+  // trig_HLT_L1SingleMuOpen_DT_v3_ = false;
+  // trig_HLT_L1SingleMuOpen_v3_ = false;
 
   // const int triggerIndex = triggerNames.triggerIndex("HLT_Mu50");
-  // TTree->SetBranchAddress("HLT_Mu50", &HLT_Mu50);
+  // // TTree->SetBranchAddress("HLT_Mu50", &HLT_Mu50);
+  // TString(triggerNames.triggerName(i))
 
-
-  // bool HLT_PFMET120_PFMHT120_IDTight = false;
-  // bool HLT_PFHT500_PFMET100_PFMHT100_IDTight = false;
-  // bool HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60 = false;
-  // bool HLT_MET105_IsoTrk50 = false;
-  // bool HLT_isoMu24 = false;
-  // bool HLT_isoMu27 = false;
 
   //( [ "HLT_L1SingleMu3_v2", "HLT_L1SingleMu5_v2", ”HLT_L1SingleMu7_v2", "HLT_L1SingleMuCosmics_v2", "HLT_L1SingleMuOpen_DT_v3", "HLT_L1SingleMuOpen_v3" ] )
 
-
   for (unsigned int i = 0; i < triggerH->size(); i++) {
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_Mu50_v") && triggerH->accept(i)){
-      trig_HLT_Mu50_ = true;
-      //cout << " HLT_Mu50 True? " << HLT_Mu50 << endl; 
-    }
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu3_v2_v") && triggerH->accept(i)){
-       trig_HLT_L1SingleMu3_v2_ = true;
-    }
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v2_v") && triggerH->accept(i)){
-       trig_HLT_L1SingleMu5_v2_ = true;
-    }
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v2_v") && triggerH->accept(i)){
-       trig_HLT_L1SingleMu7_v2_ = true;
-    }
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v2_v") && triggerH->accept(i)){
+    //std::cout << TString(triggerNames.triggerName(i)) << std::endl;
+
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu18_v") && triggerH->accept(i))
+       trig_HLT_L1SingleMu18_v4_ = true;
+        //cout << " HLT_Mu50 True? " << HLT_Mu50 << endl; 
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu25_v") && triggerH->accept(i))
+       trig_HLT_L1SingleMu25_v3_ = true;
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu7_v2_v") && triggerH->accept(i)){
+    //    trig_HLT_L1SingleMu7_v2_ = true;
+    // }
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuCosmics_v") && triggerH->accept(i))
        trig_HLT_L1SingleMuCosmics_v2_ = true;
-    }
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v2_v") && triggerH->accept(i)){
-       trig_HLT_L1SingleMuOpen_DT_v3_ = true;
-    }
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v2_v") && triggerH->accept(i)){
-       trig_HLT_L1SingleMuOpen_v3_ = true;
-    }
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_PFHT500_PFMET100_PFMHT100_IDTight_v") && triggerH->accept(i))
-    //   HLT_PFHT500_PFMET100_PFMHT100_IDTight = true;
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60_v") && triggerH->accept(i))
-    //   HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60 = true;
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_MET105_IsoTrk50_v") && triggerH->accept(i))
-    //   HLT_MET105_IsoTrk50 = true;
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_IsoMu27_v") && triggerH->accept(i))
-    //   HLT_isoMu27 = true;
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_IsoMu24_v") && triggerH->accept(i))
-    //   HLT_isoMu24 = true;
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_DT_v3_v") && triggerH->accept(i)){
+    //    trig_HLT_L1SingleMuOpen_DT_v3_ = true;
+    // }
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_v3_v") && triggerH->accept(i)){
+    //    trig_HLT_L1SingleMuOpen_v3_ = true;
+    // }
   }
 
   
@@ -501,6 +480,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_p",                     muon_p_,                    "muon_p[muon_n]/F");
   outputTree_ -> Branch ( "muon_eta",                   muon_eta_,                  "muon_eta[muon_n]/F");
   outputTree_ -> Branch ( "muon_phi",                   muon_phi_,                  "muon_phi[muon_n]/F");
+  outputTree_ -> Branch ( "muon_energy",                muon_energy_,               "muon_energy[muon_n]/F");
   
   outputTree_ -> Branch ( "muon_dtSeg_n",          muon_dtSeg_n_,         "muon_dtSeg_n[muon_n]/I");
   outputTree_ -> Branch ( "muon_dtSeg_t0timing",   muon_dtSeg_t0timing_,  "muon_dtSeg_t0timing[muon_n][100]/F");
@@ -522,13 +502,12 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_z",      muon_dtSeg_z_,     "muon_dtSeg_z[muon_n][20]/F");
   outputTree_ -> Branch ( "muon_tofMap_found",          muon_tofMap_found_,         "muon_tofMap_found[muon_n]/F");
 
-  outputTree_ -> Branch ( "trig_HLT_Mu50",     &trig_HLT_Mu50_, "trig_HLT_Mu50/O") ;
-  outputTree_ -> Branch ( "trig_HLT_L1SingleMu3_v2",     &trig_HLT_L1SingleMu3_v2_, "trig_HLT_L1SingleMu3_v2/O") ;
-  outputTree_ -> Branch ( "trig_HLT_L1SingleMu5_v2",     &trig_HLT_L1SingleMu5_v2_, "trig_HLT_L1SingleMu5_v2/O") ;
-  outputTree_ -> Branch ( "trig_HLT_L1SingleMu7_v2",     &trig_HLT_L1SingleMu7_v2_, "trig_HLT_L1SingleMu7_v2/O") ;
+  outputTree_ -> Branch ( "trig_HLT_L1SingleMu18_v4",     &trig_HLT_L1SingleMu18_v4_, "trig_HLT_L1SingleMu18_v4/O") ;
+  outputTree_ -> Branch ( "trig_HLT_L1SingleMu25_v3",     &trig_HLT_L1SingleMu25_v3_, "trig_HLT_L1SingleMu25_v3/O") ;
+  // outputTree_ -> Branch ( "trig_HLT_L1SingleMu7_v2",     &trig_HLT_L1SingleMu7_v2_, "trig_HLT_L1SingleMu7_v2/O") ;
   outputTree_ -> Branch ( "trig_HLT_L1SingleMuCosmics_v2",     &trig_HLT_L1SingleMuCosmics_v2_, "trig_HLT_L1SingleMuCosmics_v2/O") ;
-  outputTree_ -> Branch ( "trig_HLT_L1SingleMuOpen_DT_v3",     &trig_HLT_L1SingleMuOpen_DT_v3_, "trig_HLT_L1SingleMuOpen_DT_v3/O") ;
-  outputTree_ -> Branch ( "trig_HLT_L1SingleMuOpen_v3",     &trig_HLT_L1SingleMuOpen_v3_, "trig_HLT_L1SingleMuOpen_v3/O") ;
+  // outputTree_ -> Branch ( "trig_HLT_L1SingleMuOpen_DT_v3",     &trig_HLT_L1SingleMuOpen_DT_v3_, "trig_HLT_L1SingleMuOpen_DT_v3/O") ;
+  // outputTree_ -> Branch ( "trig_HLT_L1SingleMuOpen_v3",     &trig_HLT_L1SingleMuOpen_v3_, "trig_HLT_L1SingleMuOpen_v3/O") ;
 
 
 }
@@ -544,14 +523,18 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   ->setComment("Higher the integer more verbose");
   desc.addUntracked("isData", 0)
   ->setComment("0 means MC, 1 means data");
-//  desc.add("muonCollection", edm::InputTag("splitMuons"))
+//  desc.add("muonCollection", edm::InputTag("splitMuons")) //muons1Leg
 //  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
-  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
+  desc.add("muonCollection", edm::InputTag("splitMuons"))
   ->setComment("Muon collection");
-  desc.add("muonTimeCollection", edm::InputTag("lhcSTAMuons", "dt"))
+  desc.add("muonTimeCollection", edm::InputTag("splitMuons", "dt"))
   ->setComment("Input collection for combined muon timing information");
   // desc.add("TriggerResults", edm::InputTag("TriggerResults","","HLT"))
   //   ->setComment("A");
+  desc.addUntracked("Trigger_Mu", std::vector<std::string>{"HLT_L1SingleMu18_v", "HLT_L1SingleMu25_v"})
+//  desc.addUntracked("Trigger_Mu", std::vector<std::string>{"HLT_Mu50_v","HLT_OldMu100_v","HLT_TkMu100_v"})
+  ->setComment("Add the list of muon triggers");
+
 
 
 //   desc.addUntracked("Trigger_Mu", std::vector<std::string>{"HLT_Mu50_v", "HLT_IsoMu24_v"})
