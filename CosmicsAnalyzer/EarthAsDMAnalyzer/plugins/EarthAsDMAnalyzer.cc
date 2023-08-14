@@ -19,6 +19,26 @@
 // system include files
 #include <memory>
 #include <vector>
+#include <string>
+#include <map>
+#include <exception>
+#include <unordered_map>
+
+// ~~~~~~~~~ ROOT include files ~~~~~~~~~
+#include "TH1.h"
+#include "TH2.h"
+#include "TH3.h"
+#include "TDirectory.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TObject.h"
+#include "TVector3.h"
+#include "TChain.h"
+#include "TRandom3.h"
+#include "TTree.h"
+#include "TProfile.h"
+#include "TLorentzVector.h"
+//#include "TCanvas.h"
 
 // user include files
 #include "DataFormats/Common/interface/ValueMap.h"
@@ -31,12 +51,23 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/MuonDetId/interface/MuonSubdetId.h"
 #include "DataFormats/MuonDetId/interface/DTChamberId.h"
+//muons
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
+#include "DataFormats/MuonReco/interface/MuonSelectors.h"
+
+
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "DataFormats/TrackingRecHit/interface/TrackingRecHit.h"
+
+//new
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/PatCandidates/interface/PFIsolation.h"
+// #include "FWCore/Framework/interface/EDGetTokenT.h"
+
+
 
 
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
@@ -97,6 +128,8 @@ private:
   edm::EDGetTokenT< DTRecSegment4DCollection > dtSegmentToken_;
   edm::ESGetToken<CSCGeometry, MuonGeometryRecord> muonCSCGeomToken_;
   edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
+  edm::EDGetTokenT<std::vector<reco::Vertex>> offlinePrimaryVerticesToken_;
+
   edm::ESGetToken<DTGeometry, MuonGeometryRecord> muonDTGeomToken_;
   const DTGeometry *muonDTGeom;
 
@@ -126,6 +159,39 @@ private:
   float    muon_phi_[kMuonNMax];
   float    muon_energy_[kMuonNMax];
 
+//New Test Variables
+  bool    muon_IsLoose_[kMuonNMax];
+  bool    muon_IsMedium_[kMuonNMax];
+  bool    muon_IsTight_[kMuonNMax];
+  bool    muon_isHighPtMuon_[kMuonNMax];
+  bool    muon_isTrackerHighPtMuon_[kMuonNMax];
+
+  unsigned int    muon_Type_;
+
+  float    muon_d0_[kMuonNMax];
+  float    muon_d0Err_[kMuonNMax];
+  float    muon_charge_[kMuonNMax];
+  float    muon_dZ_[kMuonNMax];
+
+  float    muon_pileupIso_[kMuonNMax];
+  float    muon_chargedIso_[kMuonNMax];
+  float    muon_photonIso_[kMuonNMax];
+  float    muon_neutralHadIso_[kMuonNMax];
+
+  float    muon_validFractionTrackerHits_[kMuonNMax];
+  float    muon_normChi2_[kMuonNMax];
+  float    muon_chi2LocalPosition_[kMuonNMax];
+  float    muon_kinkFinder_[kMuonNMax];
+  float    muon_segmentCompatability_[kMuonNMax];
+  float    muon_trkIso_[kMuonNMax];
+
+  float    muon_tuneP_Pt_[kMuonNMax];
+  float    muon_tuneP_PtErr_[kMuonNMax];
+  float    muon_tuneP_Eta_[kMuonNMax];
+  float    muon_tuneP_Phi_[kMuonNMax];
+  float    muon_tuneP_MuonBestTrackType_[kMuonNMax];
+
+//End Test Variables
 
   float    muon_comb_ndof_[kMuonNMax];
   float    muon_comb_timeAtIpInOut_[kMuonNMax];
@@ -134,12 +200,12 @@ private:
   float    muon_comb_timeAtIpOutInErr_[kMuonNMax];
   float    muon_comb_invBeta_[kMuonNMax];
   float    muon_comb_freeInvBeta_[kMuonNMax];
+  int      muon_tofMap_found_[kMuonNMax];
   
+
   float    muon_dtSeg_x_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_y_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_z_[kMuonNMax][kSegmentNMax];
-  
-  int      muon_tofMap_found_[kMuonNMax];
   
   int      muon_dtSeg_n_[kMuonNMax];
   int      dtSeg_n_;
@@ -151,10 +217,7 @@ private:
 
   bool     trig_HLT_L1SingleMu18_v4_;
   bool     trig_HLT_L1SingleMu25_v3_;
-//  bool     trig_HLT_L1SingleMu7_v2_;
   bool     trig_HLT_L1SingleMuCosmics_v2_;
-  // bool     trig_HLT_L1SingleMuOpen_DT_v3_;
-  // bool     trig_HLT_L1SingleMuOpen_v3_;
 
 
 };
@@ -171,6 +234,9 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  cscSegmentToken_(consumes< CSCSegmentCollection >( edm::InputTag("cscSegments") )),
  dtSegmentToken_(consumes< DTRecSegment4DCollection >( edm::InputTag("dt4DSegments") )),
  triggerResultsToken_(consumes<edm::TriggerResults>(edm::InputTag(std::string("TriggerResults"),std::string(""),std::string("HLT")))),
+ //offlinePrimaryVerticesToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("offlinePrimaryVertices"))),
+ offlinePrimaryVerticesToken_(consumes<std::vector<reco::Vertex>>(edm::InputTag("offlinePrimaryVertices"))),
+ //offlinePrimaryVerticesToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("offlinePrimaryVertices"))), 
  muonDTGeomToken_(esConsumes())
 {}
 
@@ -202,6 +268,9 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   edm::Handle<reco::MuonCollection> muonCollectionHandle;
   iEvent.getByToken(muonToken_,muonCollectionHandle);
+
+
+  //vector<reco::Muon> muonColl = iEvent.get(muonToken_);
   
   edm::Handle<reco::MuonTimeExtraMap> tofMap;
   iEvent.getByToken(muonTimeToken_, tofMap);
@@ -215,6 +284,17 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   muonDTGeom = &iSetup.getData(muonDTGeomToken_);
   
   edm::Handle< std::vector<reco::GenParticle> > genColl;
+  // vector<reco::Muon> muonColl = iEvent.get(muonToken_);
+
+  //new
+
+  edm::Handle<reco::VertexCollection> vertexColl;
+  iEvent.getByToken(offlinePrimaryVerticesToken_, vertexColl);
+
+
+
+
+
   gen_n_ = 0;
   
   if (!isData_) {
@@ -245,6 +325,11 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   }
   if (gen_n_ > kGenNMax) cout << "!!!! please increase kGenNMax to " << gen_n_ << endl;
   
+
+  //int highestSumPt2VertexIndex = -1;
+  const reco::Vertex& highestSumPt2Vertex = vertexColl->front();
+
+
   muon_n_ = 0;
   for (unsigned int i = 0; i < muonCollectionHandle->size(); i++) {
     if (verbose_ > 2) LogPrint(MOD) << "\n  Analyzing track " << i ;
@@ -254,6 +339,73 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     muon_eta_[muon_n_] = muon->eta();
     muon_phi_[muon_n_] = muon->phi();
     muon_energy_[muon_n_] = muon->energy();
+    muon_charge_[muon_n_] = muon->charge();
+
+    //New Variables
+    //bool Variables
+    bool isMedium = muon::isMediumMuon(*muon);
+    muon_IsMedium_[muon_n_] = isMedium;
+
+    bool isTight = muon::isTightMuon(*muon, highestSumPt2Vertex);
+    muon_IsTight_[muon_n_] = isTight;
+
+    bool isHigh = muon::isHighPtMuon(*muon, highestSumPt2Vertex);
+    muon_isHighPtMuon_[muon_n_] = isHigh;
+
+    bool isTrackerHighPtMuon = muon::isTrackerHighPtMuon(*muon, highestSumPt2Vertex);
+    muon_isTrackerHighPtMuon_[muon_n_] = isTrackerHighPtMuon;
+
+
+    //Positional Variables
+
+    // Calculate the transverse impact parameter (d0) of the muon with respect to the highest sum pt vertex
+    const reco::TrackRef bestTrack = muon->muonBestTrack();
+    double dxy = -bestTrack->dxy(highestSumPt2Vertex.position());
+    double dxyError = -bestTrack->dxyError();
+    double dz = -bestTrack->dz(highestSumPt2Vertex.position());
+    muon_d0_[muon_n_] = dxy;
+    muon_d0Err_[muon_n_] = dxyError;
+    muon_dZ_[muon_n_] = dz;
+
+    muon_validFractionTrackerHits_[muon_n_] = (muon->innerTrack().isNonnull() ? muon->track()->validFraction() : -99.0);
+
+
+
+    //only give 0s
+    muon_pileupIso_[muon_n_] = muon->pfIsolationR04().sumPUPt;
+    muon_chargedIso_[muon_n_] = muon->pfIsolationR04().sumChargedHadronPt;
+    muon_photonIso_[muon_n_] = muon->pfIsolationR04().sumPhotonEt;
+    muon_neutralHadIso_[muon_n_] = muon->pfIsolationR04().sumNeutralHadronEt;
+    muon_trkIso_[muon_n_] = muon->isolationR03().sumPt;
+    muon_chi2LocalPosition_[muon_n_] = muon->combinedQuality().chi2LocalPosition;
+    muon_kinkFinder_[muon_n_] = muon->combinedQuality().trkKink;
+    //only give 0s
+
+
+
+    //not sure if working
+    muon_Type_ = (muon->isMuon() + 2*muon->isGlobalMuon() + 4*muon->isTrackerMuon() + 8*muon->isStandAloneMuon()
+        + 16*muon->isCaloMuon() + 32*muon->isPFMuon() + 64*muon->isRPCMuon());
+
+
+    muon_tuneP_Pt_[muon_n_] = muon->tunePMuonBestTrack()->pt();
+    muon_tuneP_PtErr_[muon_n_] = muon->tunePMuonBestTrack()->ptError();
+    muon_tuneP_Eta_[muon_n_] = muon->tunePMuonBestTrack()->eta();
+    muon_tuneP_Phi_[muon_n_] = muon->tunePMuonBestTrack()->phi();
+    muon_tuneP_MuonBestTrackType_[muon_n_] = muon->tunePMuonBestTrackType();
+    muon_segmentCompatability_[muon_n_] = (muon::segmentCompatibility(*muon)); 
+
+
+    // muon_normChi2_[muon_n_] = (muon::isGoodMuon(muon,muon::AllGlobalMuons) ? muon->globalTrack()->normalizedChi2() : -99.0);
+    // muonQuality_ =
+
+
+
+
+
+
+
+
     
     if (verbose_ > 2) LogPrint(MOD) << "  >> muon_pt_ " << muon->pt() << " muon_eta_ " << muon->eta() << " muon_phi_ " << muon->phi();
     
@@ -406,37 +558,18 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   trig_HLT_L1SingleMu18_v4_ = false;
   trig_HLT_L1SingleMu25_v3_ = false;
-  // trig_HLT_L1SingleMu7_v2_ = false;
   trig_HLT_L1SingleMuCosmics_v2_ = false;
-  // trig_HLT_L1SingleMuOpen_DT_v3_ = false;
-  // trig_HLT_L1SingleMuOpen_v3_ = false;
 
-  // const int triggerIndex = triggerNames.triggerIndex("HLT_Mu50");
-  // // TTree->SetBranchAddress("HLT_Mu50", &HLT_Mu50);
-  // TString(triggerNames.triggerName(i))
-
-
-  //( [ "HLT_L1SingleMu3_v2", "HLT_L1SingleMu5_v2", ”HLT_L1SingleMu7_v2", "HLT_L1SingleMuCosmics_v2", "HLT_L1SingleMuOpen_DT_v3", "HLT_L1SingleMuOpen_v3" ] )
 
   for (unsigned int i = 0; i < triggerH->size(); i++) {
-    //std::cout << TString(triggerNames.triggerName(i)) << std::endl;
 
     if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu18_v") && triggerH->accept(i))
        trig_HLT_L1SingleMu18_v4_ = true;
         //cout << " HLT_Mu50 True? " << HLT_Mu50 << endl; 
     if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu25_v") && triggerH->accept(i))
        trig_HLT_L1SingleMu25_v3_ = true;
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu7_v2_v") && triggerH->accept(i)){
-    //    trig_HLT_L1SingleMu7_v2_ = true;
-    // }
     if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuCosmics_v") && triggerH->accept(i))
        trig_HLT_L1SingleMuCosmics_v2_ = true;
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_DT_v3_v") && triggerH->accept(i)){
-    //    trig_HLT_L1SingleMuOpen_DT_v3_ = true;
-    // }
-    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_v3_v") && triggerH->accept(i)){
-    //    trig_HLT_L1SingleMuOpen_v3_ = true;
-    // }
   }
 
   
@@ -481,7 +614,43 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_eta",                   muon_eta_,                  "muon_eta[muon_n]/F");
   outputTree_ -> Branch ( "muon_phi",                   muon_phi_,                  "muon_phi[muon_n]/F");
   outputTree_ -> Branch ( "muon_energy",                muon_energy_,               "muon_energy[muon_n]/F");
-  
+
+//new vairables
+//floats
+  outputTree_ -> Branch ( "muon_charge",                muon_charge_,               "muon_charge[muon_n]/F");
+
+
+//bool
+  outputTree_ -> Branch ( "muon_IsLoose",                muon_IsLoose_,               "muon_IsLoose[muon_n]/F");
+  outputTree_ -> Branch ( "muon_IsMedium",                muon_IsMedium_,               "muon_IsMedium[muon_n]/F");
+  outputTree_ -> Branch ( "muon_IsTight",                muon_IsTight_,               "muon_IsTight[muon_n]/F");
+
+
+  outputTree_ -> Branch ( "muon_d0",                muon_d0_,               "muon_d0[muon_n]/F");
+  outputTree_ -> Branch ( "muon_d0Err",                muon_d0Err_,               "muon_d0Err[muon_n]/F");
+  outputTree_ -> Branch ( "muon_dZ",                muon_dZ_,               "muon_dZ[muon_n]/F");
+  outputTree_ -> Branch ( "muon_Type",                &muon_Type_,               "muon_Type[muon_n]/I");
+
+  outputTree_ -> Branch ( "muon_pileupIso",                muon_pileupIso_,               "muon_pileupIso[muon_n]/F");
+  outputTree_ -> Branch ( "muon_chargedIso",                muon_chargedIso_,               "muon_chargedIso[muon_n]/F");
+  outputTree_ -> Branch ( "muon_photonIso",                muon_photonIso_,               "muon_photonIso[muon_n]/F");
+  outputTree_ -> Branch ( "muon_neutralHadIso",                muon_neutralHadIso_,               "muon_neutralHadIso[muon_n]/F");
+  outputTree_ -> Branch ( "muon_validFractionTrackerHits",                muon_validFractionTrackerHits_,               "muon_validFractionTrackerHits[muon_n]/F");
+
+  outputTree_ -> Branch ( "muon_tuneP_Pt",                muon_tuneP_Pt_,               "muon_tuneP_Pt[muon_n]/F");
+  outputTree_ -> Branch ( "muon_tuneP_PtErr",                muon_tuneP_PtErr_,               "muon_tuneP_PtErr[muon_n]/F");
+  outputTree_ -> Branch ( "muon_tuneP_Eta",                muon_tuneP_Eta_,               "muon_tuneP_Eta[muon_n]/F");
+  outputTree_ -> Branch ( "muon_tuneP_Phi",                muon_tuneP_Phi_,               "muon_tuneP_Phi[muon_n]/F");
+  outputTree_ -> Branch ( "muon_tuneP_MuonBestTrackType",                muon_tuneP_MuonBestTrackType_,               "muon_tuneP_MuonBestTrackType[muon_n]/F");
+
+  outputTree_ -> Branch ( "muon_trkIso",                muon_trkIso_,               "muon_trkIso[muon_n]/F");
+  outputTree_ -> Branch ( "muon_normChi2",                muon_normChi2_,               "muon_normChi2[muon_n]/F");
+  outputTree_ -> Branch ( "muon_chi2LocalPosition",                muon_chi2LocalPosition_,               "muon_chi2LocalPosition[muon_n]/F");
+  outputTree_ -> Branch ( "muon_kinkFinder",                muon_kinkFinder_,               "muon_kinkFinder[muon_n]/F");
+  outputTree_ -> Branch ( "muon_segmentCompatability",                muon_segmentCompatability_,               "muon_segmentCompatability[muon_n]/F");
+
+//End new Variables
+
   outputTree_ -> Branch ( "muon_dtSeg_n",          muon_dtSeg_n_,         "muon_dtSeg_n[muon_n]/I");
   outputTree_ -> Branch ( "muon_dtSeg_t0timing",   muon_dtSeg_t0timing_,  "muon_dtSeg_t0timing[muon_n][100]/F");
   outputTree_ -> Branch ( "muon_dtSeg_found",      muon_dtSeg_found_,     "muon_dtSeg_found[muon_n][100]/I");
@@ -504,10 +673,7 @@ void EarthAsDMAnalyzer::beginJob() {
 
   outputTree_ -> Branch ( "trig_HLT_L1SingleMu18_v4",     &trig_HLT_L1SingleMu18_v4_, "trig_HLT_L1SingleMu18_v4/O") ;
   outputTree_ -> Branch ( "trig_HLT_L1SingleMu25_v3",     &trig_HLT_L1SingleMu25_v3_, "trig_HLT_L1SingleMu25_v3/O") ;
-  // outputTree_ -> Branch ( "trig_HLT_L1SingleMu7_v2",     &trig_HLT_L1SingleMu7_v2_, "trig_HLT_L1SingleMu7_v2/O") ;
   outputTree_ -> Branch ( "trig_HLT_L1SingleMuCosmics_v2",     &trig_HLT_L1SingleMuCosmics_v2_, "trig_HLT_L1SingleMuCosmics_v2/O") ;
-  // outputTree_ -> Branch ( "trig_HLT_L1SingleMuOpen_DT_v3",     &trig_HLT_L1SingleMuOpen_DT_v3_, "trig_HLT_L1SingleMuOpen_DT_v3/O") ;
-  // outputTree_ -> Branch ( "trig_HLT_L1SingleMuOpen_v3",     &trig_HLT_L1SingleMuOpen_v3_, "trig_HLT_L1SingleMuOpen_v3/O") ;
 
 
 }
