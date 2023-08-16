@@ -167,6 +167,7 @@ private:
   bool    muon_isTrackerHighPtMuon_[kMuonNMax];
 
   unsigned int    muon_Type_;
+  unsigned int    muon_Quality_;
 
   float    muon_d0_[kMuonNMax];
   float    muon_d0Err_[kMuonNMax];
@@ -393,7 +394,42 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     muon_tuneP_Eta_[muon_n_] = muon->tunePMuonBestTrack()->eta();
     muon_tuneP_Phi_[muon_n_] = muon->tunePMuonBestTrack()->phi();
     muon_tuneP_MuonBestTrackType_[muon_n_] = muon->tunePMuonBestTrackType();
-    muon_segmentCompatability_[muon_n_] = (muon::segmentCompatibility(*muon)); 
+    muon_segmentCompatability_[muon_n_] = (muon::segmentCompatibility(*muon));
+
+    muon_Quality_ = (
+        muon::isGoodMuon(*muon,muon::All)
+        + pow(2,1)*muon::isGoodMuon(*muon,muon::AllGlobalMuons)
+      + pow(2,2)*muon::isGoodMuon(*muon,muon::AllStandAloneMuons)
+      + pow(2,3)*muon::isGoodMuon(*muon,muon::AllTrackerMuons)
+      + pow(2,4)*muon::isGoodMuon(*muon,muon::TrackerMuonArbitrated)
+      + pow(2,5)*muon::isGoodMuon(*muon,muon::AllArbitrated)
+      + pow(2,6)*muon::isGoodMuon(*muon,muon::GlobalMuonPromptTight)
+      + pow(2,7)*muon::isGoodMuon(*muon,muon::TMLastStationLoose)
+      + pow(2,8)*muon::isGoodMuon(*muon,muon::TMLastStationTight)
+      + pow(2,9)*muon::isGoodMuon(*muon,muon::TM2DCompatibilityLoose)
+      + pow(2,10)*muon::isGoodMuon(*muon,muon::TM2DCompatibilityTight)
+      + pow(2,11)*muon::isGoodMuon(*muon,muon::TMOneStationLoose)
+      + pow(2,12)*muon::isGoodMuon(*muon,muon::TMOneStationTight)
+      + pow(2,13)*muon::isGoodMuon(*muon,muon::TMLastStationOptimizedLowPtLoose)
+      + pow(2,14)*muon::isGoodMuon(*muon,muon::TMLastStationOptimizedLowPtTight)
+      + pow(2,15)*muon::isGoodMuon(*muon,muon::GMTkChiCompatibility)
+      + pow(2,16)*muon::isGoodMuon(*muon,muon::GMStaChiCompatibility)
+      + pow(2,17)*muon::isGoodMuon(*muon,muon::GMTkKinkTight)
+      + pow(2,18)*muon::isGoodMuon(*muon,muon::TMLastStationAngLoose)
+      + pow(2,19)*muon::isGoodMuon(*muon,muon::TMLastStationAngTight)
+      + pow(2,20)*muon::isGoodMuon(*muon,muon::TMOneStationAngLoose)
+      + pow(2,21)*muon::isGoodMuon(*muon,muon::TMOneStationAngTight)
+      + pow(2,22)*muon::isGoodMuon(*muon,muon::TMLastStationOptimizedBarrelLowPtLoose)
+      + pow(2,23)*muon::isGoodMuon(*muon,muon::TMLastStationOptimizedBarrelLowPtTight)
+      + pow(2,24)*muon::isGoodMuon(*muon,muon::RPCMuLoose)      // //This is the soft muon ID
+      + pow(2,25)*( muon::isGoodMuon(*muon,muon::TMOneStationTight)
+        && muon->innerTrack()->hitPattern().trackerLayersWithMeasurement() > 5
+        && muon->innerTrack()->hitPattern().pixelLayersWithMeasurement() > 0
+        && muon->innerTrack()->quality(reco::TrackBase::highPurity)
+        && fabs(muon->innerTrack()->dxy(highestSumPt2Vertex.position())) < 0.3
+        && fabs(muon->innerTrack()->dz(highestSumPt2Vertex.position())) < 20.
+      ));
+
 
 
     // muon_normChi2_[muon_n_] = (muon::isGoodMuon(muon,muon::AllGlobalMuons) ? muon->globalTrack()->normalizedChi2() : -99.0);
@@ -649,6 +685,10 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_kinkFinder",                muon_kinkFinder_,               "muon_kinkFinder[muon_n]/F");
   outputTree_ -> Branch ( "muon_segmentCompatability",                muon_segmentCompatability_,               "muon_segmentCompatability[muon_n]/F");
 
+  outputTree_ -> Branch ( "muon_isTrackerHighPtMuon",                muon_isTrackerHighPtMuon_,               "muon_isTrackerHighPtMuon[muon_n]/O");
+  outputTree_ -> Branch ( "muon_isHighPtMuon",                muon_isHighPtMuon_,               "muon_isHighPtMuon[muon_n]/O");
+  outputTree_ -> Branch ( "muon_Quality",                &muon_Quality_,               "muon_Quality[muon_n]/I");
+
 //End new Variables
 
   outputTree_ -> Branch ( "muon_dtSeg_n",          muon_dtSeg_n_,         "muon_dtSeg_n[muon_n]/I");
@@ -674,6 +714,8 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "trig_HLT_L1SingleMu18_v4",     &trig_HLT_L1SingleMu18_v4_, "trig_HLT_L1SingleMu18_v4/O") ;
   outputTree_ -> Branch ( "trig_HLT_L1SingleMu25_v3",     &trig_HLT_L1SingleMu25_v3_, "trig_HLT_L1SingleMu25_v3/O") ;
   outputTree_ -> Branch ( "trig_HLT_L1SingleMuCosmics_v2",     &trig_HLT_L1SingleMuCosmics_v2_, "trig_HLT_L1SingleMuCosmics_v2/O") ;
+
+
 
 
 }

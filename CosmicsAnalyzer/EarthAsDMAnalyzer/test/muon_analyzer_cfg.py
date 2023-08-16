@@ -60,7 +60,8 @@ process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.load('Configuration.StandardSequences.Services_cff')
 
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring("file:/afs/cern.ch/user/l/lbrennan/public/MCFileProduction2/CMSSW_13_0_10/src/RootFiles/TRK-Run3Winter23Reco-00009-91to180-100000events.root"), 
+    fileNames = cms.untracked.vstring('file:lbrennan@uaf-1.t2.ucsd.edu://Cosmics/lbrennan-crab_RAWtoReco-91to180Theta-3000to4000GeV-126X_mcRun3_2022cosmics_realistic_deco_v1_v4-6f8577e9b9f3e6c5d2a25bde23678f33/USER'),
+    #("file:/afs/cern.ch/user/l/lbrennan/public/MCFileProduction2/CMSSW_13_0_10/src/RootFiles/TRK-Run3Winter23Reco-00009-91to180-100000events.root"), 
     #TRK-Run3Winter23Reco-00009-0to75-100000events.root and TRK-Run3Winter23Reco-00009-91to180-100000events.root
    # eventsToSkip = cms.untracked.VEventRange("1:1:409-1:1:409","1:1:1595-1:1:1595","1:1:2369-1:1:2369","1:1:3422-1:1:3422","1:1:4281-1:1:4281","1:1:14704-1:1:14704","1:1:20858-1:1:20858","1:1:88864-1:1:88864")  # Skip only Event 2085 for the 91 to 180 samples for splitmuons
     eventsToSkip = cms.untracked.VEventRange("1:1:335-1:1:335","1:1:1595-1:1:1595","1:1:14704-1:1:14704","1:1:20858-1:1:20858")  # Skip only Event 2085 for the 91 to 180 samples
@@ -91,7 +92,7 @@ process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
 # process.options.SkipEvent = cms.untracked.vstring('Analyzing track 0')
 
 process.TFileService = cms.Service("TFileService",
-    fileName = cms.string("MCntuple-91to180-splitMuons-3Triggers-WithEnergy.root")
+    fileName = cms.string("MCntuple-91to180-splitMuons-3Triggers-WithAdditionalVariables-test13.root")
 )
 #ImportantSampleProductions
 #good100,000Samples1

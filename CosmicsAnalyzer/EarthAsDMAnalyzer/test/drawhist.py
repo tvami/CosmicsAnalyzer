@@ -81,15 +81,18 @@ def draw2DHistNoLegend(hist1, title): #x1,x2,y1,y2):
     hist1.Draw("COLZ")
 
 
-    can.SaveAs(f"plots/test2/{title}_both.pdf")
-    can.SaveAs(f"plots/test2/{title}_both.png")
+    # can.SaveAs(f"plots/test3/{title}_both.pdf")
+    # can.SaveAs(f"plots/test3/{title}_both.png")
+
+    # can2 = can.ProfileY()
+    # can2.draw("COLZ")
 
 
-    # #Making a tprofile
-    can2 = r.TProfile("profile", title, 10, -10, 10) #title, x_bins, x_min, x_max)
-    can2.Draw() 
-    can2.SaveAs(f"plots/test/{title}_both.pdf")
-    can2.SaveAs(f"plots/test/{title}_both.png")
+    # # #Making a tprofile
+    # can2 = r.TProfile("profile", title, 10, -10, 10) #title, x_bins, x_min, x_max)
+    # can2.Draw() 
+    # can2.SaveAs(f"plots/test/{title}_both.pdf")
+    # can2.SaveAs(f"plots/test/{title}_both.png")
 
     return can
 
@@ -154,8 +157,14 @@ def main():
     h_muonGlobalYvsTime1 = r.TH2D("h_muonGlobalYvsTime1", "Background MC GlobalY vs time;time[ns];GlobalY", 100, -100, 100, 50, -800, 800)
     h_muonGlobalYvsTime2 = r.TH2D("h_muonGlobalYvsTime2", "Signal MC GlobalY vs time;time[ns];GlobalY", 100, -100, 100, 50, -800, 800)
 
-    h_TriggervsEnergy1 = r.TH2D("h_TriggervsEnergy1", "Signal MC trigger vs energy;0 or 1;energy", 100, 0, 2, 50, 0, 2000)
-    h_TriggervsEnergy2 = r.TH2D("h_TriggervsEnergy2", "Signal MC trigger vs energy;0 or 1;energy", 100, 0, 2, 50, 0, 2000)
+    h_TriggervsEnergy1 = r.TH2D("h_TriggervsEnergy1", "Signal MC trigger vs energy;0 or 1;energy", 2, -0.5, 1.5, 100, 0, 1000)
+    h_TriggervsEnergy2 = r.TH2D("h_TriggervsEnergy2", "Signal MC trigger vs energy;0 or 1;energy", 100, 0, 2, 2, 0, 2000)
+
+    h_TriggervsPhi1 = r.TH2D("h_TriggervsPhi1", "Signal MC trigger vs Phi;0 or 1;Phi", 2, -0.5, 1.5, 100, 0, 1000)
+    h_TriggervsPhi2 = r.TH2D("h_TriggervsPhi2", "Signal MC trigger vs Phi;0 or 1;Phi", 100, 0, 2, 2, 0, 2000)
+
+    h_TriggervsPt1 = r.TH2D("h_TriggervsPt1", "Signal MC trigger vs pT;0 or 1;pT", 2, -0.5, 1.5, 100, 0, 1000)
+    h_TriggervsPt2 = r.TH2D("h_TriggervsPt2", "Signal MC trigger vs pT;0 or 1;pT", 100, 0, 2, 2, 0, 2000)
 
     h_muonEnergy1 = r.TH1F("h_muonEnergy1", "Muon Energy Comparison;energy;yield", 100, -100, 3000)
     h_muonEnergy2 = r.TH1F("h_muonEnergy2", "Muon Energy Comparison;energy;yield", 100, -100, 3000)
@@ -163,6 +172,8 @@ def main():
 
     event_count = 0
     pfreq = 1000
+    accepted_printed = False
+    rejected_printed = False
 
     for tree in [tree1, tree2]:
         for event in tree:
@@ -230,31 +241,109 @@ def main():
 
 
 #######Created For TProfile
+            Count1 = 0
+
+            for energy in event.muon_energy:
+                if event.trig_HLT_L1SingleMuCosmics_v2 == 1 and not accepted_printed:
+                    print("energy of first accepted event:", energy)
+                    accepted_printed = True
+
+                if event.trig_HLT_L1SingleMuCosmics_v2 == 0 and not rejected_printed:
+                    print("energy of first rejected event:", energy)
+                    rejected_printed = True
 
             if event.trig_HLT_L1SingleMuCosmics_v2 == 1:
-
                 for energy in event.muon_energy:
-                    if energy > -1000 and energy < 1000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
+                    if energy > -1000 and energy < 4000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
                         if tree == tree1:
                             h_TriggervsEnergy1.Fill(1, energy)
                         else:
                             h_TriggervsEnergy2.Fill(1, energy)
 
-            if event.trig_HLT_L1SingleMuCosmics_v2 == 0:
+                for pt in event.muon_pt:
+                    if pt > -1000 and pt < 1000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
+                        if tree == tree1:
+                            h_TriggervsPt1.Fill(1, pt)
+                        else:
+                            h_TriggervsPt2.Fill(1, pt)
 
+                for phi in event.muon_phi:
+                    if phi > -1000 and phi < 1000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
+                        if tree == tree1:
+                            h_TriggervsPhi1.Fill(1, phi)
+                        else:
+                            h_TriggervsPhi2.Fill(1, phi)
+
+            if event.trig_HLT_L1SingleMuCosmics_v2 == 0:
                 for energy in event.muon_energy:
-                    if energy > -1000 and energy < 1000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
+                    if energy > -1000 and energy < 4000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
                         if tree == tree1:
                             h_TriggervsEnergy1.Fill(0, energy)
                         else:
                             h_TriggervsEnergy2.Fill(0, energy)
 
+                for pt in event.muon_pt:
+                    if pt > -1000 and pt < 3000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
+                        if tree == tree1:
+                            h_TriggervsPt1.Fill(0, pt)
+                        else:
+                            h_TriggervsPt2.Fill(0, pt)
+
+                for phi in event.muon_phi:
+                    if phi > -1000 and phi < 1000: #and dtSeg_t0timing != 0 and dtSeg_found == 1: #event.muon_tofMap_found == 1:
+                        if tree == tree1:
+                            h_TriggervsPhi1.Fill(0, phi)
+                        else:
+                            h_TriggervsPhi2.Fill(0, phi)
+
 
             event_count += 1
 
 
-    create_and_save_tprofile(h_TriggervsEnergy1, "Trigger1_Profile", "Trigger Value", "Mean Energy")
-    create_and_save_tprofile(h_TriggervsEnergy2, "Trigger2_Profile", "Trigger Value", "Mean Energy")
+    # create_and_save_tprofile(h_TriggervsEnergy1, "Trigger1_Profile", "Trigger Value", "Mean Energy")
+    # create_and_save_tprofile(h_TriggervsEnergy2, "Trigger2_Profile", "Trigger Value", "Mean Energy")
+
+
+    # draw2DHistNoLegend(h_TriggervsEnergy1, 'h_TriggervsEnergy1_0to75_Trigger') #r'$0^\circ$ - $75^\circ$', r'$91^\circ$ - $180^\circ$', '2Dhisttest') #0.75, 0.4, 0.95, 0.55)
+    # draw2DHistNoLegend(h_TriggervsEnergy2, 'h_TriggervsEnergy2_91to180_Trigger') #r'$91^\circ$ - $180^\circ$', r'$91^\circ$ - $180^\circ$', '2Dhisttest') #0.75, 0.4, 0.95, 0.55)
+    # test1 = draw2DHistNoLegend(h_TriggervsEnergy1, 'h_TriggervsEnergy1_0to75_Trigger') #r'$0^\circ$ - $75^\circ$', r'$91^\circ$ - $180^\circ$', '2Dhisttest') #0.75, 0.4, 0.95, 0.55)
+
+    TriggervsEnergy1_plot_final = r.TCanvas()
+    TriggervsEnergy1_plot = h_TriggervsEnergy1.RebinY(20).ProfileY().ProjectionX()
+    TriggervsEnergy1_plot.GetYaxis().SetRangeUser(0.,1.)
+    TriggervsEnergy1_plot.Draw("COLZ")
+    TriggervsEnergy1_plot_final.SaveAs("plots/test/TriggervsEnergy1.png")
+
+    # TriggervsEnergy2_plot_final = r.TCanvas()
+    # TriggervsEnergy2_plot = h_TriggervsEnergy1.RebinY(2).ProfileY().ProjectionX()
+    # TriggervsEnergy2_plot.GetYaxis().SetRangeUser(0.,1.)
+    # TriggervsEnergy2_plot.Draw("COLZ")
+    # TriggervsEnergy2_plot_final.SaveAs("plots/test/TriggervsEnergy2.png")
+
+    # TriggervsPt1_plot_final = r.TCanvas()
+    # TriggervsPt1_plot = h_TriggervsEnergy1.RebinY(2).ProfileY().ProjectionX()
+    # TriggervsPt1_plot.GetYaxis().SetRangeUser(0.,1.)
+    # TriggervsPt1_plot.Draw("COLZ")
+    # TriggervsPt1_plot_final.SaveAs("plots/test/TriggervsPt1.png")
+
+    # TriggervsPt2_plot_final = r.TCanvas()
+    # TriggervsPt2_plot = h_TriggervsEnergy1.RebinY(2).ProfileY().ProjectionX()
+    # TriggervsPt2_plot.GetYaxis().SetRangeUser(0.,1.)
+    # TriggervsPt2_plot.Draw("COLZ")
+    # TriggervsPt2_plot_final.SaveAs("plots/test/TriggervsPt2.png")
+
+    # TriggervsPhi1_plot_final = r.TCanvas()
+    # TriggervsPhi1_plot = h_TriggervsEnergy1.RebinY(2).ProfileY().ProjectionX()
+    # TriggervsPhi1_plot.GetYaxis().SetRangeUser(0.,1.)
+    # TriggervsPhi1_plot.Draw("COLZ")
+    # TriggervsPhi1_plot_final.SaveAs("plots/test/TriggervsPhi1.png")
+
+    # TriggervsPhi2_plot_final = r.TCanvas()
+    # TriggervsPhi2_plot = h_TriggervsEnergy1.RebinY(2).ProfileY().ProjectionX()
+    # TriggervsPhi2_plot.GetYaxis().SetRangeUser(0.,1.)
+    # TriggervsPhi2_plot.Draw("COLZ")
+    # TriggervsPhi2_plot_final.SaveAs("plots/test/TriggervsPhi2.png")
+
 
 
     # drawCanvas(h_muonPhi1,h_muonPhi2, r'$0^\circ$ - $75^\circ$', r'$91^\circ$ - $180^\circ$', 'muonPhi', 0.75, 0.4, 0.95, 0.55)
