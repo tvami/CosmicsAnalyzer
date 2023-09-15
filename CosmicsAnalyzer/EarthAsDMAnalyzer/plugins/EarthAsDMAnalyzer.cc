@@ -20,7 +20,11 @@
 #include <memory>
 #include <vector>
 
-// user include files
+// ~~~~~~~~~ ROOT include files ~~~~~~~~~
+#include "TFile.h"
+#include "TTree.h"
+
+// ~~~~~~~~~ CMSSW include files ~~~~~~~~~
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/DTRecHit/interface/DTRecHitCollection.h"
 #include "DataFormats/DTRecHit/interface/DTRecSegment4DCollection.h"
@@ -50,8 +54,9 @@
 #include "Geometry/DTGeometry/interface/DTGeometry.h"
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h"
 
-#include "TFile.h"
-#include "TTree.h"
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "FWCore/Common/interface/TriggerNames.h"
+
 //
 // class declaration
 //
@@ -85,6 +90,8 @@ private:
   
   edm::ESGetToken<DTGeometry, MuonGeometryRecord> muonDTGeomToken_;
   const DTGeometry *muonDTGeom;
+
+  edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
   
   TFile* outputFile_;
   TTree* outputTree_;
@@ -104,6 +111,13 @@ private:
   int      gen_moth_pdg_[kGenNMax];
   int      gen_daughter_n_[kGenNMax];
   int      gen_daughter_pdg_[kGenNMax];
+
+  bool     HLT_L1SingleMu3       = false;
+  bool     HLT_L1SingleMu5       = false;
+  bool     HLT_L1SingleMu7       = false;
+  bool     HLT_L1SingleMuCosmics = false;
+  bool     HLT_L1SingleMuOpen    = false;
+  bool     HLT_L1SingleMuOpen_DT = false;
   
   int      muon_n_;
   float    muon_pt_[kMuonNMax];
@@ -140,7 +154,8 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("muonTimeCollection"))),
  cscSegmentToken_(consumes< CSCSegmentCollection >( edm::InputTag("cscSegments") )),
  dtSegmentToken_(consumes< DTRecSegment4DCollection >( edm::InputTag("dt4DSegments") )),
- muonDTGeomToken_(esConsumes())
+ muonDTGeomToken_(esConsumes()),
+ triggerResultsToken_(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("TriggerResults")))
 {}
 
 EarthAsDMAnalyzer::~EarthAsDMAnalyzer()  = default;
@@ -160,8 +175,11 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   eventNumber_ = iEvent.id().event();
   
   if (verbose_ > 1) LogPrint(MOD) << "Analyzing runNumber " << runNumber_ << " lsNumber " << lsNumber_ << " eventNumber " << eventNumber_;
-  
 
+  //------------------------------------------------------------------
+  // Necessary handles to be used
+  //------------------------------------------------------------------
+  
   edm::Handle<reco::MuonCollection> muonCollectionHandle;
   iEvent.getByToken(muonToken_,muonCollectionHandle);
   
@@ -176,6 +194,10 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   
   muonDTGeom = &iSetup.getData(muonDTGeomToken_);
   
+  //------------------------------------------------------------------
+  // GenParticles to be saved in the ntuple
+  //------------------------------------------------------------------
+
   edm::Handle< std::vector<reco::GenParticle> > genColl;
   gen_n_ = 0;
   if (!isData_) {
@@ -206,6 +228,33 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   }
   if (gen_n_ > kGenNMax) cout << "!!!! please increase kGenNMax to " << gen_n_ << endl;
   
+  //------------------------------------------------------------------
+  // Get trigger results for this event
+  //------------------------------------------------------------------
+  const edm::Handle<edm::TriggerResults> triggerH = iEvent.getHandle(triggerResultsToken_);
+  const auto triggerNames = iEvent.triggerNames(*triggerH);
+
+  //------------------------------------------------------------------
+  // Save trigger decisions in array of booleans
+  //------------------------------------------------------------------
+
+  for (unsigned int i = 0; i < triggerH->size(); i++) {
+    // cout << triggerNames.triggerName(i) << endl;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu3_v") && triggerH->accept(i))
+      HLT_L1SingleMu3 = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v") && triggerH->accept(i))
+      HLT_L1SingleMu5 = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu7_v") && triggerH->accept(i))
+      HLT_L1SingleMu7 = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuCosmics_v") && triggerH->accept(i))
+      HLT_L1SingleMuCosmics = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_v") && triggerH->accept(i))
+      HLT_L1SingleMuOpen = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_DT_v") && triggerH->accept(i))
+      HLT_L1SingleMuOpen_DT = true;
+  }
+
+
   muon_n_ = 0;
   for (unsigned int i = 0; i < muonCollectionHandle->size(); i++) {
     if (verbose_ > 2) LogPrint(MOD) << "\n  Analyzing track " << i ;
@@ -216,6 +265,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     muon_phi_[muon_n_] = muon->phi();
     
     if (verbose_ > 2) LogPrint(MOD) << "  >> muon_pt_ " << muon->pt() << " muon_eta_ " << muon->eta() << " muon_phi_ " << muon->phi();
+    if (verbose_ > 2) LogPrint(MOD) << "  >> muon_vx_ " << muon->vx() << " muon_vy_ " << muon->vy() << " muon_vz_ " << muon->vz();
     
 //    const reco::MuonTime time = muon->time();
 //    const reco::MuonTime rpcTime = muon->rpcTime();
@@ -260,6 +310,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             dtGlobalPointX = globalPoint.x();
             dtGlobalPointY = globalPoint.y();
             dtGlobalPointZ = globalPoint.z();
+            if (verbose_ > 4) LogPrint(MOD) << "        >> eta: " << globalPoint.eta();
+            if (verbose_ > 4) LogPrint(MOD) << "        >> phi: " << globalPoint.phi();
           }
           muon_dtSeg_found_[muon_n_][dtSeg_n_] = found;
           muon_dtSeg_t0timing_[muon_n_][dtSeg_n_] = t0timing;
@@ -320,6 +372,13 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "gen_moth_pdg",     gen_moth_pdg_,     "gen_moth_pdg[gen_n]/I");
   outputTree_ -> Branch ( "gen_daughter_n",   gen_daughter_n_,   "gen_daughter_n[gen_n]/I");
   outputTree_ -> Branch ( "gen_daughter_pdg", gen_daughter_pdg_, "gen_daughter_pdg[gen_n]/I");
+
+  outputTree_ -> Branch ( "HLT_L1SingleMu3",            &HLT_L1SingleMu3);
+  outputTree_ -> Branch ( "HLT_L1SingleMu5",            &HLT_L1SingleMu5);
+  outputTree_ -> Branch ( "HLT_L1SingleMu7",            &HLT_L1SingleMu7);
+  outputTree_ -> Branch ( "HLT_L1SingleMuCosmics",      &HLT_L1SingleMuCosmics);
+  outputTree_ -> Branch ( "HLT_L1SingleMuOpen",         &HLT_L1SingleMuOpen);
+  outputTree_ -> Branch ( "HLT_L1SingleMuOpen_DT",      &HLT_L1SingleMuOpen_DT);
   
   outputTree_ -> Branch ( "muon_n",                     &muon_n_);
   outputTree_ -> Branch ( "muon_pt",                    muon_pt_,                   "muon_pt[muon_n]/F");
@@ -365,6 +424,8 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
 //  desc.add("muonTimeCollection", edm::InputTag("splitMuons", "combined"))
   desc.add("muonTimeCollection", edm::InputTag("splitMuons", "dt"))
   ->setComment("Input collection for combined muon timing information");
+  desc.add("TriggerResults", edm::InputTag("TriggerResults","","HLT"))
+  ->setComment("HLTrigger results");
   descriptions.add("EarthAsDMAnalyzer",desc);
 }
 
