@@ -417,6 +417,8 @@ def createAndAppendToRootFile(output_directory, output_file_name, histograms_to_
     # Create the full path for the output ROOT file
     # output_file_path = os.path.join(output_directory, output_file_name)
 
+    os.makedirs(output_directory, exist_ok=True)
+
     # Create a new ROOT file in "RECREATE" mode
     # output_file = r.TFile(output_directory, "RECREATE")
     output_file = r.TFile(f"{output_directory}/{output_file_name}.root", "RECREATE")
@@ -672,21 +674,14 @@ def main():
 
     RootFilesPath = 'plots/BackgroundPlots/test_CorrelationFactorVsBackground_v1/RootFiles'
     pngFilePath = 'plots/BackgroundPlots/test_CorrelationFactorVsBackground_v1/pngs'
-    # drawCanvas(h_muon_comb_ndof_PositiveCorrelationFactor1,h_muon_comb_ndof_NegativeCorrelationFactor1, r'positive', r'Negative', 'Positive vs Negative ndof Background correlation','BackgroundPlots/CorrelationFactorvsBackgroundEventParameters_speed_v1', 0.75, 0.4, 0.95, 0.55)
-    
-    #drawCanvas(h_muon_dtSeg_globY_PositiveCorrelationFactor1,h_muon_dtSeg_globY_NegativeCorrelationFactor1, r'positive', r'Negative', 'Positive vs Negative dtSeg_globY Background correlation','BackgroundPlots/CorrelationFactorvsBackgroundEventParameters_speed_v1', 0.75, 0.4, 0.95, 0.55)
-    drawCanvasAndCreateRootFile(h_muon_dtSeg_globY_PositiveCorrelationFactor1,h_muon_dtSeg_globY_NegativeCorrelationFactor1, r'positive', r'Negative', 'Positive vs Negative dtSeg_globY Background correlation',pngFilePath, RootFilesPath, 'PositiveVsNegative_dtSeg_globY_Background_Correlation',0.75, 0.4, 0.95, 0.55)
-    drawCanvasAndCreateRootFile(h_muon_dtSeg_globZ_PositiveCorrelationFactor1,h_muon_dtSeg_globZ_NegativeCorrelationFactor1, r'positive', r'Negative', 'Positive vs Negative dtSeg_globZ Background correlation',pngFilePath , RootFilesPath, 'PositiveVsNegative_dtSeg_globZ_Background_Correlation', 0.75, 0.4, 0.95, 0.55)
 
-    
     #histogram_name = "h_muon_dtSeg_globY_PositiveCorrelationFactor1"
     # RootSavedPath_inputDirectory = 'plots/BackgroundPlots/CorrelationFactorvsBackgroundEventParameters_RootFileCreationTest_v1/RootFiles'
-    RootSavedPath_outputDirectory = 'plots/BackgroundPlots/test_CorrelationFactorVsBackground_v1/Output_RootFiles'
+    RootSavedPath_outputDirectory = 'plots/BackgroundPlots/test_CorrelationFactorVsBackground_v1/ProofItWorks'
 
     histograms_to_append = [h_muon_dtSeg_globY_PositiveCorrelationFactor1, h_muon_dtSeg_globZ_PositiveCorrelationFactor1, h_muon_comb_ndof_PositiveCorrelationFactor1, h_muonPhi_PositiveCorrelationFactor1, h_muonPt_PositiveCorrelationFactor1, h_muonEta_PositiveCorrelationFactor1,
     h_muonPhi_NegativeCorrelationFactor1]
     createAndAppendToRootFile(RootSavedPath_outputDirectory, 'test2', histograms_to_append)
-
 
 
 
