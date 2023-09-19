@@ -601,7 +601,7 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   desc.add("TriggerResults", edm::InputTag("TriggerResults","","HLT"))
   ->setComment("HLTrigger results");
   desc.add("trackCollection", edm::InputTag("tevMuons:default:RECO"))
-  ->setComment("Cosmic muon collection");
+  ->setComment("TeV muon collection");
   descriptions.add("EarthAsDMAnalyzer",desc);
 }
 
