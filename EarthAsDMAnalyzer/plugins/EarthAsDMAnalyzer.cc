@@ -432,9 +432,11 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
 
 
-    // muon_normChi2_[muon_n_] = (muon::isGoodMuon(muon,muon::AllGlobalMuons) ? muon->globalTrack()->normalizedChi2() : -99.0);
+    muon_normChi2_[muon_n_] = (muon::isGoodMuon(*muon,muon::AllGlobalMuons) ? muon->globalTrack()->normalizedChi2() : -99.0);
     // muonQuality_ =
-
+    if (verbose_) {
+    std::cout << "Verbose output: muon_normChi2_[" << muon_n_ << "] = " << muon_normChi2_[muon_n_] << std::endl;
+}
 
 
 
