@@ -140,12 +140,14 @@ private:
   int      gen_daughter_n_[kGenNMax];
   int      gen_daughter_pdg_[kGenNMax];
 
-  bool     HLT_L1SingleMu3       = false;
-  bool     HLT_L1SingleMu5       = false;
-  bool     HLT_L1SingleMu7       = false;
+  // bool     HLT_L1SingleMu3       = false;
+  // bool     HLT_L1SingleMu5       = false;
+  // bool     HLT_L1SingleMu7       = false;
+  bool     HLT_L1SingleMu18       = false;
+  bool     HLT_L1SingleMu25       = false;
   bool     HLT_L1SingleMuCosmics = false;
-  bool     HLT_L1SingleMuOpen    = false;
-  bool     HLT_L1SingleMuOpen_DT = false;
+  // bool     HLT_L1SingleMuOpen    = false;
+  // bool     HLT_L1SingleMuOpen_DT = false;
   
   int      muon_n_;
   float    muon_pt_[kMuonNMax];
@@ -296,18 +298,22 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   for (unsigned int i = 0; i < triggerH->size(); i++) {
     // cout << triggerNames.triggerName(i) << endl;
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu3_v") && triggerH->accept(i))
-      HLT_L1SingleMu3 = true;
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v") && triggerH->accept(i))
-      HLT_L1SingleMu5 = true;
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu7_v") && triggerH->accept(i))
-      HLT_L1SingleMu7 = true;
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu3_v") && triggerH->accept(i))
+    //   HLT_L1SingleMu3 = true;
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu5_v") && triggerH->accept(i))
+    //   HLT_L1SingleMu5 = true;
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu7_v") && triggerH->accept(i))
+    //   HLT_L1SingleMu7 = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu18_v") && triggerH->accept(i))
+      HLT_L1SingleMu18 = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMu25_v") && triggerH->accept(i))
+      HLT_L1SingleMu25 = true;
     if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuCosmics_v") && triggerH->accept(i))
       HLT_L1SingleMuCosmics = true;
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_v") && triggerH->accept(i))
-      HLT_L1SingleMuOpen = true;
-    if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_DT_v") && triggerH->accept(i))
-      HLT_L1SingleMuOpen_DT = true;
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_v") && triggerH->accept(i))
+    //   HLT_L1SingleMuOpen = true;
+    // if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuOpen_DT_v") && triggerH->accept(i))
+    //   HLT_L1SingleMuOpen_DT = true;
   }
 
   //------------------------------------------------------------------
@@ -547,12 +553,14 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "gen_daughter_n",   gen_daughter_n_,   "gen_daughter_n[gen_n]/I");
   outputTree_ -> Branch ( "gen_daughter_pdg", gen_daughter_pdg_, "gen_daughter_pdg[gen_n]/I");
 
-  outputTree_ -> Branch ( "HLT_L1SingleMu3",            &HLT_L1SingleMu3);
-  outputTree_ -> Branch ( "HLT_L1SingleMu5",            &HLT_L1SingleMu5);
-  outputTree_ -> Branch ( "HLT_L1SingleMu7",            &HLT_L1SingleMu7);
-  outputTree_ -> Branch ( "HLT_L1SingleMuCosmics",      &HLT_L1SingleMuCosmics);
-  outputTree_ -> Branch ( "HLT_L1SingleMuOpen",         &HLT_L1SingleMuOpen);
-  outputTree_ -> Branch ( "HLT_L1SingleMuOpen_DT",      &HLT_L1SingleMuOpen_DT);
+  // outputTree_ -> Branch ( "HLT_L1SingleMu3",            &HLT_L1SingleMu3);
+  // outputTree_ -> Branch ( "HLT_L1SingleMu5",            &HLT_L1SingleMu5);
+  // outputTree_ -> Branch ( "HLT_L1SingleMu7",            &HLT_L1SingleMu7);
+  outputTree_ -> Branch ( "HLT_L1SingleMu18",            &HLT_L1SingleMu18,      "HLT_L1SingleMu18/O");
+  outputTree_ -> Branch ( "HLT_L1SingleMu25",            &HLT_L1SingleMu25,      "HLT_L1SingleMu25/O");
+  outputTree_ -> Branch ( "HLT_L1SingleMuCosmics",       &HLT_L1SingleMuCosmics, "HLT_L1SingleMuCosmics/O");
+  // outputTree_ -> Branch ( "HLT_L1SingleMuOpen",         &HLT_L1SingleMuOpen);
+  // outputTree_ -> Branch ( "HLT_L1SingleMuOpen_DT",      &HLT_L1SingleMuOpen_DT);
   
   outputTree_ -> Branch ( "muon_n",                     &muon_n_);
   outputTree_ -> Branch ( "muon_pt",                    muon_pt_,                   "muon_pt[muon_n]/F");
