@@ -1,15 +1,3 @@
-# import FWCore.ParameterSet.Config as cms
-
-# #process = cms.Process("MuonAnalyzer")
-# process = cms.Process("EarthAsDMAnalyzer")
-
-# process.source = cms.Source("PoolSource",
-#     fileNames = cms.untracked.vstring("file:TRK-Run3Winter23Reco-00009.root")
-# )
-
-# process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
-
-
 # ## This is for MuonAnalyzer
 # # process.muonPhiAnalyzer = cms.EDAnalyzer("MyAnalyzer",
 # #     muonCollection = cms.InputTag("muons"),
@@ -20,24 +8,6 @@
 # #     muonCollection6 = cms.InputTag("splitMuons"),
 # #     muonCollection7 = cms.InputTag("lhcSTAMuons"),
 # # )
-
-# ## This is for EarthAsDMAnalyzer
-# process.muonPhiAnalyzer = cms.EDAnalyzer("MyAnalyzer",
-#     genParticles = cms.InputTag("muons"),
-#     muonCollection = cms.InputTag("muons1Leg"),
-#     muonTimeCollection = cms.InputTag("muonsBeamHaloEndCapsOnly"),
-#     cscSegments = cms.InputTag("muonsNoRPC"),
-#     dt4DSegments = cms.InputTag("muonsWitht0Correction"),
-# )
-
-
-
-
-# process.TFileService = cms.Service("TFileService",
-#     fileName = cms.string("MCVariables.root")
-# )
-
-# process.p = cms.Path(process.muonPhiAnalyzer)
 
 import FWCore.ParameterSet.Config as cms
 from FWCore.ParameterSet.VarParsing import VarParsing
@@ -73,6 +43,8 @@ process.source = cms.Source("PoolSource",
 
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
+#process.source.eventsToProcess = cms.untracked.VEventRange('1:276500:27649928')
+#process.source.eventsToProcess = cms.untracked.VEventRange('1:275500:1-1:276500:max')
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
