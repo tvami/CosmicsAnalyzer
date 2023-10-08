@@ -25,6 +25,7 @@
 #include "TTree.h"
 #include "TH2.h"
 #include "TH1.h"
+#include "Math/Vector4D.h"
 
 // ~~~~~~~~~ CMSSW include files ~~~~~~~~~
 #include "DataFormats/Common/interface/ValueMap.h"
@@ -131,6 +132,7 @@ private:
   float    gen_eta_[kGenNMax];
   float    gen_phi_[kGenNMax];
   float    gen_mass_[kGenNMax];
+  float    gen_energy_[kGenNMax];
   float    gen_vx_[kGenNMax];
   float    gen_vy_[kGenNMax];
   float    gen_vz_[kGenNMax];
@@ -154,6 +156,7 @@ private:
   float    muon_p_[kMuonNMax];
   float    muon_eta_[kMuonNMax];
   float    muon_phi_[kMuonNMax];
+  float    muon_energy_[kMuonNMax];
   
   float    muon_comb_ndof_[kMuonNMax];
   float    muon_comb_timeAtIpInOut_[kMuonNMax];
@@ -171,23 +174,27 @@ private:
   float    muon_dtSeg_globY_[kMuonNMax][kSegmentNMax];
   float    muon_dtSeg_globZ_[kMuonNMax][kSegmentNMax];
 
-  int      track_n_;  // tevMuons track
+  int      track_n_;  // track
   float    track_vx_[kTrackNMax];
   float    track_vy_[kTrackNMax];
   float    track_vz_[kTrackNMax];
   float    track_phi_[kTrackNMax];
   float    track_pt_[kTrackNMax];
+  float    track_energy_[kTrackNMax];
 
   float    gen_ug_pt_;  // gen particle index 1, muon after propagation in material
   float    gen_ug_phi_;
+  float    gen_ug_energy_;
   float    muon_matched_pt_;
   float    muon_matched_phi_;
+  float    muon_matched_energy_;
   float    muon_relDiffRecoGen_pt_;
   float    muon_relDiffRecoGen_phi_;
-  float    tevMuon_matched_pt_;
-  float    tevMuon_matched_phi_;
-  float    tevMuon_relDiffRecoGen_pt_;
-  float    tevMuon_relDiffRecoGen_phi_;  
+  float    track_matched_pt_;
+  float    track_matched_phi_;
+  float    track_matched_energy_;
+  float    track_relDiffRecoGen_pt_;
+  float    track_relDiffRecoGen_phi_;  
 };
 
 //
@@ -260,6 +267,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       gen_eta_[i] = genCand->eta();
       gen_phi_[i] = genCand->phi();
       gen_mass_[i] = genCand->mass();
+      gen_energy_[i] = genCand->energy();
       gen_vx_[i] = genCand->vx();
       gen_vy_[i] = genCand->vy();
       gen_vz_[i] = genCand->vz();
@@ -283,6 +291,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     genCand_ug = &(*genColl)[1];
     gen_ug_pt_ = genCand_ug->pt();
     gen_ug_phi_ = genCand_ug->phi();
+    gen_ug_energy_ = genCand_ug->energy();
   }
   if (gen_n_ > kGenNMax) cout << "!!!! please increase kGenNMax to " << gen_n_ << endl;
   
@@ -330,6 +339,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     muon_p_[muon_n_] = muon->p();
     muon_eta_[muon_n_] = muon->eta();
     muon_phi_[muon_n_] = muon->phi();
+    muon_energy_[muon_n_] = muon->energy();
     
     if (verbose_ > 2) LogPrint(MOD) << "  >> muon_pt_ " << muon->pt() << " muon_eta_ " << muon->eta() << " muon_phi_ " << muon->phi();
     if (verbose_ > 2) LogPrint(MOD) << "  >> muon_vx_ " << muon->vx() << " muon_vy_ " << muon->vy() << " muon_vz_ " << muon->vz();
@@ -427,6 +437,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   muon_matched_pt_ = -999.;
   muon_matched_phi_ = -999.;
+  muon_matched_energy_ = -999.;
   if (!isData_ && closestRecIndex >= 0) {
     reco::MuonRef matchedMuon  = reco::MuonRef( muonCollectionHandle, closestRecIndex );
 
@@ -437,6 +448,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     
     muon_matched_pt_ = matchedMuon->pt();
     muon_matched_phi_ = matchedMuon->phi();
+    muon_matched_energy_ = matchedMuon->energy();
     muon_relDiffRecoGen_pt_ = (matchedMuon->pt() - gen_ug_pt_) / gen_ug_pt_;
     muon_relDiffRecoGen_phi_ = (matchedMuon->phi() - gen_ug_phi_) / gen_ug_phi_;
     /*
@@ -469,17 +481,27 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   edm::Handle<std::vector<reco::Track>> tracks;
   iEvent.getByToken(tracksToken_, tracks);
   track_n_ = 0;
+  ROOT::Math::PtEtaPhiMVector vTrack;
   for (const auto& track : *tracks) {
     track_vx_[track_n_] = track.vx();
     track_vy_[track_n_] = track.vy();
     track_vz_[track_n_] = track.vz();
     track_phi_[track_n_] = track.phi();
     track_pt_[track_n_] = track.pt();
+    
+    vTrack.SetCoordinates(track.pt(),track.eta(),track.phi(),0.106);
+    // vTrack.SetPt(track.pt());
+    // vTrack.SetEta(track.eta());
+    // vTrack.SetPhi(track.phi());
+    // vTrack.SetM(0.106);
+    track_energy_[track_n_] = vTrack.energy();//track.energy();
 
-    // Reco - GEN tevmuon track matching
+    // Reco - GEN track matching
     if (!isData_) {
-      if (verbose_ > 2) LogPrint(MOD) << "  >> MC,  GEN - Reco tevmuon track matching";
+      if (verbose_ > 2) LogPrint(MOD) << "  >> MC,  GEN - Reco track matching";
       float dr = deltaR(genCand_ug->eta(),genCand_ug->phi(),track.eta(),track.phi());
+      if (verbose_ > 2) LogPrint(MOD) << "    >> dr:" << dr << ", gen phi:" << genCand_ug->phi() << ", track phi:" << track.phi() 
+                                                            << ", gen eta:" << genCand_ug->eta() << ", track eta:" << track.eta();
       if (dr < dRMinGen) {
         dRMinGen = dr;
         closestRecIndex = track_n_;
@@ -490,19 +512,21 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     
   }
 
-  tevMuon_matched_pt_ = -999.;
-  tevMuon_matched_phi_ = -999.;
+  track_matched_pt_ = -999.;
+  track_matched_phi_ = -999.;
+  track_matched_energy_ = -999.;
   if (!isData_ && closestRecIndex >= 0) {
 
     if (verbose_ > 2) 
         LogPrint(MOD) << "  >> dRMinGen:" << dRMinGen << ", closestRecIndex:" << closestRecIndex
                       << ", GEN muon pT: " << gen_ug_pt_
-                      << ", Reco tevmuon pT: "   << track_pt_[closestRecIndex];
+                      << ", Reco track pT: "   << track_pt_[closestRecIndex];
     
-    tevMuon_matched_pt_ = track_pt_[closestRecIndex];
-    tevMuon_matched_phi_ = track_phi_[closestRecIndex];
-    tevMuon_relDiffRecoGen_pt_ = (track_pt_[closestRecIndex] - gen_ug_pt_) / gen_ug_pt_;
-    tevMuon_relDiffRecoGen_phi_ = (track_phi_[closestRecIndex] - gen_ug_phi_) / gen_ug_phi_;
+    track_matched_pt_ = track_pt_[closestRecIndex];
+    track_matched_phi_ = track_phi_[closestRecIndex];
+    track_matched_energy_ = track_energy_[closestRecIndex];
+    track_relDiffRecoGen_pt_ = (track_pt_[closestRecIndex] - gen_ug_pt_) / gen_ug_pt_;
+    track_relDiffRecoGen_phi_ = (track_phi_[closestRecIndex] - gen_ug_phi_) / gen_ug_phi_;
     /*
     // 1D plot of reco and gen pt, phi
     GenPt_TeVMuonsMatch->Fill(genPt);
@@ -544,6 +568,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "gen_eta",          gen_eta_,          "gen_eta[gen_n]/F");
   outputTree_ -> Branch ( "gen_phi",          gen_phi_,          "gen_phi[gen_n]/F");
   outputTree_ -> Branch ( "gen_mass",         gen_mass_,         "gen_mass[gen_n]/F");
+  outputTree_ -> Branch ( "gen_energy",       gen_energy_,       "gen_energy[gen_n]/F");
   outputTree_ -> Branch ( "gen_vx",           gen_vx_,           "gen_vx[gen_n]/F");
   outputTree_ -> Branch ( "gen_vy",           gen_vy_,           "gen_vy[gen_n]/F");
   outputTree_ -> Branch ( "gen_vz",           gen_vz_,           "gen_vz[gen_n]/F");
@@ -567,6 +592,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_p",                     muon_p_,                    "muon_p[muon_n]/F");
   outputTree_ -> Branch ( "muon_eta",                   muon_eta_,                  "muon_eta[muon_n]/F");
   outputTree_ -> Branch ( "muon_phi",                   muon_phi_,                  "muon_phi[muon_n]/F");
+  outputTree_ -> Branch ( "muon_energy",                muon_energy_,               "muon_energy[muon_n]/F");
   
   outputTree_ -> Branch ( "muon_dtSeg_n",          muon_dtSeg_n_,         "muon_dtSeg_n[muon_n]/I");
   outputTree_ -> Branch ( "muon_dtSeg_t0timing",   muon_dtSeg_t0timing_,  "muon_dtSeg_t0timing[muon_n][100]/F");
@@ -588,18 +614,22 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch( "track_vy",         track_vy_,         "track_vy[track_n]/F");
   outputTree_ -> Branch( "track_vz",         track_vz_,         "track_vz[track_n]/F");
   outputTree_ -> Branch( "track_phi",        track_phi_,        "track_phi[track_n]/F");
-  outputTree_ -> Branch( "track_pt",         track_pt_,        "track_pt[track_n]/F");
+  outputTree_ -> Branch( "track_pt",         track_pt_,         "track_pt[track_n]/F");
+  outputTree_ -> Branch( "track_energy",     track_energy_,     "track_energy[track_n]/F");
 
   outputTree_ -> Branch ( "gen_ug_pt",                  &gen_ug_pt_);
   outputTree_ -> Branch ( "gen_ug_phi",                 &gen_ug_phi_);
+  outputTree_ -> Branch ( "gen_ug_energy",              &gen_ug_energy_);
   outputTree_ -> Branch ( "muon_matched_pt",            &muon_matched_pt_);
   outputTree_ -> Branch ( "muon_matched_phi",           &muon_matched_phi_);
+  outputTree_ -> Branch ( "muon_matched_energy",        &muon_matched_energy_);
   outputTree_ -> Branch ( "muon_relDiffRecoGen_pt",     &muon_relDiffRecoGen_pt_);
   outputTree_ -> Branch ( "muon_relDiffRecoGen_phi",    &muon_relDiffRecoGen_phi_);
-  outputTree_ -> Branch ( "tevMuon_matched_pt",         &tevMuon_matched_pt_);
-  outputTree_ -> Branch ( "tevMuon_matched_phi",        &tevMuon_matched_phi_);
-  outputTree_ -> Branch ( "tevMuon_relDiffRecoGen_pt",  &tevMuon_relDiffRecoGen_pt_);
-  outputTree_ -> Branch ( "tevMuon_relDiffRecoGen_phi", &tevMuon_relDiffRecoGen_phi_);
+  outputTree_ -> Branch ( "track_matched_pt",           &track_matched_pt_);
+  outputTree_ -> Branch ( "track_matched_phi",          &track_matched_phi_);
+  outputTree_ -> Branch ( "track_matched_energy",       &track_matched_energy_);
+  outputTree_ -> Branch ( "track_relDiffRecoGen_pt",    &track_relDiffRecoGen_pt_);
+  outputTree_ -> Branch ( "track_relDiffRecoGen_phi",   &track_relDiffRecoGen_phi_);
   
   /*
   // Create subdirectory for histograms
@@ -651,7 +681,10 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   desc.add("TriggerResults", edm::InputTag("TriggerResults","","HLT"))
   ->setComment("HLTrigger results");
   desc.add("trackCollection", edm::InputTag("tevMuons:default:RECO"))
-  ->setComment("TeV muon collection");
+  // desc.add("trackCollection", edm::InputTag("standAloneMuons"))
+  // desc.add("trackCollection", edm::InputTag("cosmicMuons"))
+  // desc.add("trackCollection", edm::InputTag("cosmicMuons1Leg"))
+  ->setComment("Track collection");
   descriptions.add("EarthAsDMAnalyzer",desc);
 }
 
