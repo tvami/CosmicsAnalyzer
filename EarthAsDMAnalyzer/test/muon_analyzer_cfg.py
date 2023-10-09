@@ -45,6 +45,7 @@ process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:276500:27649928')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:275500:1-1:276500:max')
+process.source.eventsToProcess = cms.untracked.VEventRange('1:276489:27648835')
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
@@ -52,20 +53,13 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, options.GTAG, '')
 
 process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
-    muonCollection = cms.InputTag("splitMuons"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
-#    splitMuonsCollection = cms.InputTag("splitMuons"),
-#    muons1LegCollection = cms.InputTag("muons1Leg"),
-#    lhcSTAMuonsCollection = cms.InputTag("lhcSTAMuons"),
-
-#    muonCollection="muon1Leg"
-# I can add other collections here later
+    #muonCollection = cms.InputTag("splitMuons"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
+    muonCollection = cms.InputTag("muons"),
+    #muonCollection = cms.InputTag("lhcSTAMuons"),
+    #muonCollection = cms.InputTag("muons1Leg"),
     isData = cms.untracked.int32(0)
-    # isData = cms.untracked.int32(1)
+    #isData = cms.untracked.int32(1)
 )
-
-# process.options.SkipEvent = cms.untracked.vstring('runNumber 1 lsNumber 1 eventNumber 20858')
-# process.options.SkipEvent = cms.untracked.vstring('NotFound')
-# process.options.SkipEvent = cms.untracked.vstring('Analyzing track 0')
 
 process.TFileService = cms.Service("TFileService",
     #fileName = cms.string("MCntuple-91to180-splitMuons-3Triggers-WithAdditionalVariables-test13.root")
@@ -74,8 +68,7 @@ process.TFileService = cms.Service("TFileService",
     # fileName = cms.string("ntuple_MC_theta0to75_100Evts.root")
     fileName = cms.string("ntuple_MC_RR-0to75Theta-4to3000GeV_35_v4.root")
 )
-#ImportantSampleProductions
-#good100,000Samples1
+
 process.p = cms.Path(process.muonPhiAnalyzer)
 
 
