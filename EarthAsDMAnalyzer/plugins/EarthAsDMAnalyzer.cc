@@ -25,9 +25,6 @@
 #include <unordered_map>
 
 // ~~~~~~~~~ ROOT include files ~~~~~~~~~
-//#include "TH1.h"
-//#include "TH2.h"
-//#include "TH3.h"
 #include "TDirectory.h"
 #include "TFile.h"
 #include "TTree.h"
@@ -36,15 +33,10 @@
 #include "TChain.h"
 #include "TRandom3.h"
 #include "TTree.h"
-//#include "TProfile.h"
 #include "TLorentzVector.h"
 
 
 // ~~~~~~~~~ ROOT include files ~~~~~~~~~
-//#include "TFile.h"
-//#include "TTree.h"
-//#include "TH2.h"
-//#include "TH1.h"
 
 // ~~~~~~~~~ CMSSW include files ~~~~~~~~~
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
@@ -211,6 +203,7 @@ private:
   std::vector<float> track_vy_;
   std::vector<float> track_vz_;
   std::vector<float> track_phi_;
+  std::vector<float> track_eta_;
   std::vector<float> track_pt_;
 };
 
@@ -549,22 +542,41 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     
     if (tofMap.isValid()) {
       const reco::MuonTimeExtra* combinedTimeExtra = NULL;
-      combinedTimeExtra = &tofMap->get(muon.key());
-      muon_tofMap_found_.push_back(1);
+      float nDof = 9999;
+      float timeAtIpInOut = 9999;
+      float timeAtIpInOutErr = 9999;
+      float timeAtIpOutIn = 9999;
+      float timeAtIpOutInErr = 9999;
+      float invBeta = 9999;
+      float freeInvBeta = 9999;
 
-      muon_comb_ndof_.push_back( combinedTimeExtra->nDof());
-      muon_comb_timeAtIpInOut_.push_back( combinedTimeExtra->timeAtIpInOut());
-      muon_comb_timeAtIpInOutErr_.push_back( combinedTimeExtra->timeAtIpInOutErr());
-      muon_comb_timeAtIpOutIn_.push_back( combinedTimeExtra->timeAtIpOutIn());
-      muon_comb_timeAtIpOutInErr_.push_back( combinedTimeExtra->timeAtIpOutInErr());
-      muon_comb_invBeta_.push_back( combinedTimeExtra->inverseBeta());
-      muon_comb_freeInvBeta_.push_back( combinedTimeExtra->freeInverseBeta());
-      // Sign convention for muonCombinedFreeInvBeta_:
-      //   positive - outward moving particle
-      //   negative - inward moving particle
-      if (verbose_ > 4) LogPrint(MOD) << "combinedTimeExtra->nDof() " << combinedTimeExtra->nDof() << "  timeAtIpInOut_ " << combinedTimeExtra->timeAtIpInOut()  << " +/- " <<  combinedTimeExtra->timeAtIpOutInErr() << " timeAtIpOutIn_ " << combinedTimeExtra->timeAtIpOutIn() << " +/- " <<  combinedTimeExtra->timeAtIpInOutErr() << " invBeta_ " << combinedTimeExtra->inverseBeta() << " freeInvBeta_ " << combinedTimeExtra->freeInverseBeta();
-    }
-    
+      combinedTimeExtra = &tofMap->get(muon.key());
+      if (combinedTimeExtra != NULL) {
+        nDof = combinedTimeExtra->nDof();
+        muon_tofMap_found_.push_back(1);
+        timeAtIpInOut = combinedTimeExtra->timeAtIpInOut();
+        timeAtIpInOutErr = combinedTimeExtra->timeAtIpInOutErr();
+        timeAtIpOutIn = combinedTimeExtra->timeAtIpOutIn();
+        timeAtIpOutInErr = combinedTimeExtra->timeAtIpOutInErr();
+        invBeta = combinedTimeExtra->inverseBeta();
+        freeInvBeta = combinedTimeExtra->freeInverseBeta();
+
+        // Sign convention for muonCombinedFreeInvBeta_:
+        //   positive - outward moving particle
+        //   negative - inward moving particle
+        if (verbose_ > 4) LogPrint(MOD) << "combinedTimeExtra->nDof() " << combinedTimeExtra->nDof() << "  timeAtIpInOut_ " << combinedTimeExtra->timeAtIpInOut()  << " +/- " <<  combinedTimeExtra->timeAtIpOutInErr() << " timeAtIpOutIn_ " << combinedTimeExtra->timeAtIpOutIn() << " +/- " <<  combinedTimeExtra->timeAtIpInOutErr() << " invBeta_ " << combinedTimeExtra->inverseBeta() << " freeInvBeta_ " << combinedTimeExtra->freeInverseBeta();
+      }
+      else {
+        muon_tofMap_found_.push_back(0);
+      }
+      muon_comb_ndof_.push_back(nDof);
+      muon_comb_timeAtIpInOut_.push_back(timeAtIpInOut);
+      muon_comb_timeAtIpInOutErr_.push_back(timeAtIpInOutErr);
+      muon_comb_timeAtIpOutIn_.push_back(timeAtIpOutIn);
+      muon_comb_timeAtIpOutInErr_.push_back(timeAtIpOutInErr);
+      muon_comb_invBeta_.push_back(invBeta);
+      muon_comb_freeInvBeta_.push_back(freeInvBeta);
+    }    
     muon_n_++ ;
   } // end of muon collection loop
 
@@ -579,6 +591,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     track_vy_.push_back(track.vy());
     track_vz_.push_back(track.vz());
     track_phi_.push_back(track.phi());
+    track_eta_.push_back(track.eta());
     track_pt_.push_back(track.pt());
 
     track_n_++;
@@ -667,6 +680,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   track_vy_.clear();
   track_vz_.clear();
   track_phi_.clear();
+  track_eta_.clear();
   track_pt_.clear();
   
 }
@@ -759,6 +773,9 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_globZ",      &muon_dtSeg_globZ_);
   outputTree_ -> Branch ( "muon_dtSeg_eta",        &muon_dtSeg_eta_);
   outputTree_ -> Branch ( "muon_dtSeg_phi",        &muon_dtSeg_phi_);
+
+  outputTree_ -> Branch ( "muon_avgEtaFromDTseg",       &muon_avgEtaFromDTseg_);
+  outputTree_ -> Branch ( "muon_avgPhiFromDTseg",       &muon_avgPhiFromDTseg_);
   
   outputTree_ -> Branch ( "muon_comb_ndof",             &muon_comb_ndof_);
   outputTree_ -> Branch ( "muon_comb_timeAtIpInOut",    &muon_comb_timeAtIpInOut_);
@@ -773,6 +790,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch( "track_vy",         &track_vy_);
   outputTree_ -> Branch( "track_vz",         &track_vz_);
   outputTree_ -> Branch( "track_phi",        &track_phi_);
+  outputTree_ -> Branch( "track_eta",        &track_eta_);
   outputTree_ -> Branch( "track_pt",         &track_pt_);
 //
 }
