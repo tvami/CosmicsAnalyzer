@@ -45,7 +45,7 @@ process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:276500:27649928')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:275500:1-1:276500:max')
-process.source.eventsToProcess = cms.untracked.VEventRange('1:276489:27648835')
+#process.source.eventsToProcess = cms.untracked.VEventRange('1:276489:27648835')
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
@@ -55,6 +55,7 @@ process.GlobalTag = GlobalTag(process.GlobalTag, options.GTAG, '')
 process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
     #muonCollection = cms.InputTag("splitMuons"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
     muonCollection = cms.InputTag("muons"),
+    muonTimeCollection = cms.InputTag("muons","dt"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
     #muonCollection = cms.InputTag("lhcSTAMuons"),
     #muonCollection = cms.InputTag("muons1Leg"),
     isData = cms.untracked.int32(0)
