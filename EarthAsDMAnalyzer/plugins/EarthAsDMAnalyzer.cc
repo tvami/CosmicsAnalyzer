@@ -203,6 +203,7 @@ private:
   std::vector<float> track_vy_;
   std::vector<float> track_vz_;
   std::vector<float> track_phi_;
+  std::vector<float> track_eta_;
   std::vector<float> track_pt_;
 };
 
@@ -590,6 +591,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     track_vy_.push_back(track.vy());
     track_vz_.push_back(track.vz());
     track_phi_.push_back(track.phi());
+    track_eta_.push_back(track.eta());
     track_pt_.push_back(track.pt());
 
     track_n_++;
@@ -678,6 +680,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   track_vy_.clear();
   track_vz_.clear();
   track_phi_.clear();
+  track_eta_.clear();
   track_pt_.clear();
   
 }
@@ -770,6 +773,9 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_globZ",      &muon_dtSeg_globZ_);
   outputTree_ -> Branch ( "muon_dtSeg_eta",        &muon_dtSeg_eta_);
   outputTree_ -> Branch ( "muon_dtSeg_phi",        &muon_dtSeg_phi_);
+
+  outputTree_ -> Branch ( "muon_avgEtaFromDTseg",       &muon_avgEtaFromDTseg_);
+  outputTree_ -> Branch ( "muon_avgPhiFromDTseg",       &muon_avgPhiFromDTseg_);
   
   outputTree_ -> Branch ( "muon_comb_ndof",             &muon_comb_ndof_);
   outputTree_ -> Branch ( "muon_comb_timeAtIpInOut",    &muon_comb_timeAtIpInOut_);
@@ -784,6 +790,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch( "track_vy",         &track_vy_);
   outputTree_ -> Branch( "track_vz",         &track_vz_);
   outputTree_ -> Branch( "track_phi",        &track_phi_);
+  outputTree_ -> Branch( "track_eta",        &track_eta_);
   outputTree_ -> Branch( "track_pt",         &track_pt_);
 //
 }
