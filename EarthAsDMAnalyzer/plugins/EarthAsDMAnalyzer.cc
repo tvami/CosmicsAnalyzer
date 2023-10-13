@@ -513,6 +513,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             if (verbose_ > 5) LogPrint(MOD) << "        >> eta = " << dtGlobalPointEta << " phi = " << dtGlobalPointPhi;
             muonSumEtaFromDTseg += dtGlobalPointEta;
             muonSumPhiFromDTseg += dtGlobalPointPhi;
+            dtSeg_n++;
           }
           muon_dtSeg_found_.push_back( found);
           muon_dtSeg_t0timing_.push_back( t0timing);
@@ -521,8 +522,6 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
           muon_dtSeg_globZ_.push_back( dtGlobalPointZ);
           muon_dtSeg_eta_.push_back( dtGlobalPointEta);
           muon_dtSeg_phi_.push_back( dtGlobalPointPhi);
-
-          dtSeg_n++;
         } // end loop on segments
         dtChamb_n++;
       } // end loop on chamber matches
