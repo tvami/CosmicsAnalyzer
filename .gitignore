@@ -1,0 +1,10 @@
+*.*~
+.*
+*.root
+*.png
+*.pdf
+*.pyc
+*_init__.py*
+build/
+*__*
+
