@@ -7,4 +7,5 @@
 *_init__.py*
 build/
 *__*
-
+crab_*
+*.out
