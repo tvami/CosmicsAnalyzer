@@ -144,6 +144,7 @@ private:
   std::vector<float> muon_eta_;
   std::vector<float> muon_phi_;
   std::vector<float> muon_energy_;
+  std::vector<float> muon_ptErr_;
   
   std::vector<bool>  muon_isLoose_;
   std::vector<bool>  muon_isMedium_;
@@ -152,6 +153,12 @@ private:
   std::vector<bool>  muon_isTrackerHighPtMuon_;
   std::vector<int>   muon_type_;
   std::vector<int>   muon_quality_;
+
+  std::vector<bool> muon_hasMatchedGenTrack_;
+  std::vector<float> muon_fromGenTrack_Pt_;
+  std::vector<float> muon_fromGenTrack_PtErr_;
+  std::vector<float> muon_fromGenTrack_Eta_;
+  std::vector<float> muon_fromGenTrack_Phi_;
 
   std::vector<float> muon_d0_;
   std::vector<float> muon_d0Err_;
@@ -205,6 +212,7 @@ private:
   std::vector<float> track_phi_;
   std::vector<float> track_eta_;
   std::vector<float> track_pt_;
+  std::vector<float> track_ptErr_;
 };
 
 //
@@ -260,6 +268,9 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   
   edm::Handle<CSCSegmentCollection> cscSegments;
   iEvent.getByToken(cscSegmentToken_, cscSegments);
+
+  edm::Handle<std::vector<reco::Track>> trackCollectionHandle;
+  iEvent.getByToken(tracksToken_, trackCollectionHandle);
   
 //  edm::Handle<DTRecSegment4DCollection> dtSegments;
 //  iEvent.getByToken(dtSegmentToken_, dtSegments);
@@ -359,6 +370,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     if (verbose_ > 2) LogPrint(MOD) << "\n  Analyzing track " << i ;
     reco::MuonRef muon  = reco::MuonRef( muonCollectionHandle, i );
     muon_pt_.push_back( muon->pt());
+    // muon_ptErr_.push_back( muon->ptError());  // reco::Muon doesn't have func ptErr()
     muon_p_.push_back( muon->p());
     muon_eta_.push_back( muon->eta());
     muon_phi_.push_back( muon->phi());
@@ -376,6 +388,41 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
     bool isTrackerHighPtMuon = muon::isTrackerHighPtMuon(*muon, highestSumPt2Vertex);
     muon_isTrackerHighPtMuon_.push_back( isTrackerHighPtMuon);
+
+    // Match muon inner tracks with general track
+    bool hasMatchedGenTrack = 0;
+    float genTrackPt = -9999.; 
+    float genTrackPtErr = -9999.; 
+    float genTrackEta = -9999.;
+    float genTrackPhi = -9999.;
+    reco::TrackRef innertrack = muon->innerTrack();
+    if(innertrack.isNonnull()) {
+      if (verbose_ > 2) LogPrint(MOD) << "  >> muon inner track exists: key " << innertrack.key()
+                                      << " pT " << innertrack->pt()
+                                      << " eta " << innertrack->eta()
+                                      << " phi " << innertrack->phi();
+      // loop on the general track
+      for(unsigned int c=0;c<trackCollectionHandle->size();c++) {
+        reco::TrackRef genTrackRef = reco::TrackRef( trackCollectionHandle.product(), c );
+        // match keys
+        if (genTrackRef.key() == innertrack.key()) {
+          if (verbose_ > 2) LogPrint(MOD) << "    >> general track matches: key " << genTrackRef.key()
+                                          << " pT " << genTrackRef->pt()
+                                          << " eta " << genTrackRef->eta()
+                                          << " phi " << genTrackRef->phi();
+          hasMatchedGenTrack = 1;
+          genTrackPt = genTrackRef->pt();
+          genTrackPtErr = genTrackRef->ptError();
+          genTrackEta = genTrackRef->eta();
+          genTrackPhi = genTrackRef->phi();
+        }
+      } // end loop on general track
+    }
+    muon_hasMatchedGenTrack_.push_back( hasMatchedGenTrack );
+    muon_fromGenTrack_Pt_.push_back( genTrackPt );
+    muon_fromGenTrack_PtErr_.push_back( genTrackPtErr );
+    muon_fromGenTrack_Eta_.push_back( genTrackEta );
+    muon_fromGenTrack_Phi_.push_back( genTrackPhi );
 
     // Calculate the transverse impact parameter (d0) of the muon with respect to the highest sum pt vertex
     // TAV: FYI this has no meaning in cosmics
@@ -400,6 +447,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
     muon_tuneP_Pt_.push_back( muon->tunePMuonBestTrack()->pt());
     muon_tuneP_PtErr_.push_back( muon->tunePMuonBestTrack()->ptError());
+    muon_ptErr_.push_back( muon->tunePMuonBestTrack()->ptError() );  // muons uses tuneP reco algo
     muon_tuneP_Eta_.push_back( muon->tunePMuonBestTrack()->eta());
     muon_tuneP_Phi_.push_back( muon->tunePMuonBestTrack()->phi());
     muon_tuneP_MuonBestTrackType_.push_back( muon->tunePMuonBestTrackType());
@@ -580,23 +628,23 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   } // end of muon collection loop
 
   //------------------------------------------------------------------
-  // Save cosmic muon reco::Track collection
+  // General track collection
   //------------------------------------------------------------------
-  edm::Handle<std::vector<reco::Track>> tracks;
-  iEvent.getByToken(tracksToken_, tracks);
+  
   track_n_ = 0;
-  for (const auto& track : *tracks) {
+  for (const auto& track : *trackCollectionHandle) {
     track_vx_.push_back(track.vx());
     track_vy_.push_back(track.vy());
     track_vz_.push_back(track.vz());
     track_phi_.push_back(track.phi());
     track_eta_.push_back(track.eta());
     track_pt_.push_back(track.pt());
+    track_ptErr_.push_back(track.ptError());
 
     track_n_++;
     
   }
-  
+
   // Fill the tree
   outputTree_->Fill();
   
@@ -617,6 +665,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   gen_daughter_pdg_.clear();
   
   muon_pt_.clear();
+  muon_ptErr_.clear();
   muon_p_.clear();
   muon_eta_.clear();
   muon_phi_.clear();
@@ -630,6 +679,12 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   muon_isTrackerHighPtMuon_.clear();
   muon_type_.clear();
   muon_quality_.clear();
+
+  muon_hasMatchedGenTrack_.clear();
+  muon_fromGenTrack_Pt_.clear();
+  muon_fromGenTrack_PtErr_.clear();
+  muon_fromGenTrack_Eta_.clear();
+  muon_fromGenTrack_Phi_.clear();
   
   muon_d0_.clear();
   muon_d0Err_.clear();
@@ -681,6 +736,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   track_phi_.clear();
   track_eta_.clear();
   track_pt_.clear();
+  track_ptErr_.clear();
   
 }
 
@@ -722,6 +778,7 @@ void EarthAsDMAnalyzer::beginJob() {
   
   outputTree_ -> Branch ( "muon_n",           &muon_n_);
   outputTree_ -> Branch ( "muon_pt",          &muon_pt_);
+  outputTree_ -> Branch ( "muon_ptErr",       &muon_ptErr_);
   outputTree_ -> Branch ( "muon_p",           &muon_p_);
   outputTree_ -> Branch ( "muon_eta",         &muon_eta_);
   outputTree_ -> Branch ( "muon_phi",         &muon_phi_);
@@ -738,6 +795,11 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_type",        &muon_type_);
   outputTree_ -> Branch ( "muon_quality",     &muon_quality_);
 
+  outputTree_ -> Branch ( "muon_hasMatchedGenTrack", &muon_hasMatchedGenTrack_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Pt",    &muon_fromGenTrack_Pt_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_PtErr", &muon_fromGenTrack_PtErr_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Eta",   &muon_fromGenTrack_Eta_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Phi",   &muon_fromGenTrack_Phi_);
 
   outputTree_ -> Branch ( "muon_d0",          &muon_d0_);
   outputTree_ -> Branch ( "muon_d0Err",       &muon_d0Err_);
@@ -791,6 +853,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch( "track_phi",        &track_phi_);
   outputTree_ -> Branch( "track_eta",        &track_eta_);
   outputTree_ -> Branch( "track_pt",         &track_pt_);
+  outputTree_ -> Branch( "track_ptErr",      &track_ptErr_);
 //
 }
 

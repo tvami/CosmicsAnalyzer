@@ -2,6 +2,7 @@ import argparse
 import glob
 from ROOT import TChain, TMath, TH1F, TCanvas, gStyle, TLegend
 import tdrStyle
+import commonFunctions
 
 def dR(eta1, phi1, eta2, phi2):
     deta = eta1 - eta2
@@ -107,7 +108,7 @@ def main():
         '_standAloneMuons'              : TChain(treename),
         'splitMuons_tevMuons'           : TChain(treename),
         # 'standAloneMuons' : TChain(treename),
-        # 'cosmicMuons'     : TChain(treename),
+        'muons_cosmicMuons'     : TChain(treename),
         # 'cosmicMuons1Leg' : TChain(treename)
     }
     
@@ -118,6 +119,7 @@ def main():
         'recoTrackPt_tevMuons' : TH1F("recoMuonPt_tevMuons", "", 100, 0, 5000),
         'recoTrackPt_ctfWithMaterialTracksP5' : TH1F("recoMuonPt_ctfWithMaterialTracksP5", "", 100, 0, 5000),
         'recoTrackPt_standAloneMuons' : TH1F("recoMuonPt_standAloneMuons", "", 100, 0, 5000),
+        'recoTrackPt_cosmicMuons' : TH1F("recoMuonPt_cosmicMuons", "", 100, 0, 5000),
     }
     
     relHistDict = {
@@ -147,20 +149,20 @@ def main():
         if verbose > 2: print("track_key:~~{}~~".format(track_key))
         
         # Fill genPt
-        if muon_key.find("muons")>=0:
+        if histDict['genPt'].GetEntries() == 0.:
             for evt in tc:
                 histDict['genPt'].Fill(evt.gen_pt[1])
         
         # Fill reco muon/track pT
         for hkey in histDict:
-            if muon_key != '' and hkey.find(muon_key)>=0:
+            if muon_key != '' and hkey.find(muon_key)>=0 and histDict[hkey].GetEntries() == 0.:
                 if verbose > 2: print("found", muon_key, "in", hkey)
                 for ind, evt in enumerate(tc):
                     if muon_match_index[ind] != -1: 
                         if verbose > 3: print("plotting: >> match index" , muon_match_index[ind])
                         if verbose > 3: print("plotting: >> muon pt" , evt.muon_pt)
                         histDict[hkey].Fill(evt.muon_pt[muon_match_index[ind]])
-            if track_key != '' and hkey.find(track_key)>=0:
+            if track_key != '' and hkey.find(track_key)>=0 and histDict[hkey].GetEntries() == 0.:
                 if verbose > 2: print("found", track_key, "in", hkey)
                 for ind, evt in enumerate(tc):
                     if track_match_index[ind] != -1: 
@@ -168,13 +170,13 @@ def main():
                         if verbose > 3: print("plotting: >> muon pt" , evt.track_pt)
                         histDict[hkey].Fill(evt.track_pt[track_match_index[ind]])
                         
-        # Fill Reco-Gen rel diff
-        for hkey in relHistDict:
-            if hkey.find(key)>=0:
-                for ind, evt in enumerate(tc):
-                    if muon_match_index[ind] != -1: 
-                        relDiff = (evt.muon_pt[muon_match_index[ind]] - evt.gen_pt[1]) / evt.gen_pt[1]
-                        relHistDict[hkey].Fill(relDiff)
+        # # Fill Reco-Gen rel diff
+        # for hkey in relHistDict:
+        #     if hkey.find(key)>=0:
+        #         for ind, evt in enumerate(tc):
+        #             if muon_match_index[ind] != -1: 
+        #                 relDiff = (evt.muon_pt[muon_match_index[ind]] - evt.gen_pt[1]) / evt.gen_pt[1]
+        #                 relHistDict[hkey].Fill(relDiff)
             
     gStyle.SetOptStat(0)
     tdrStyle.SetTDRStyle()
@@ -198,7 +200,11 @@ def main():
 
     # draw
     can.cd()
-    # can.SetLogy()
+    can.SetLogy()
+    # set range has to be called after Scale()
+    for i in range(len(histList)):
+        hist.GetYaxis().SetRangeUser(1e-3, 1.)
+
     for key, hist in histDict.items():
         if i == 0:
             # hist.SetMinimum(1e-3)
@@ -209,13 +215,13 @@ def main():
     leg = TLegend(0.25, 0.75, 0.8, 0.94)
     for i, (k, hist) in enumerate(histDict.items()):
         if k.find("gen")>=0:
-            leg.AddEntry(hist, "gen : "+str(integrals[i]))
+            leg.AddEntry(hist, "gen : {:.0f}".format(integrals[i]))
     for i, (k, hist) in enumerate(histDict.items()):
         if not k.find("gen")>=0:
-            leg.AddEntry(hist, k.split("_")[1] + ": " + str(integrals[i]))
+            leg.AddEntry(hist, k.split("_")[1] + ": {:.0f}".format(integrals[i]))
 
     leg.Draw("same")
-    can.SaveAs(outdir + "/" + "pt_maxPt_sig.png")
+    can.SaveAs(outdir + "/" + "pt_maxPt_sig_logy.png")
     
     '''
     # rel diff reco - gen pT
