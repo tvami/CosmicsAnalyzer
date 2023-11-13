@@ -207,19 +207,18 @@ private:
   std::vector<float> muon_dtSeg_eta_;
   std::vector<float> muon_dtSeg_phi_;
 
-  std::vector<float> Track_Reconsruction_Score_;
-  std::vector<float> muon_dtSeg_globY_Hits_rPhi_; //dtGlobalPointYValues
-  std::vector<float> muon_dtSeg_t0timing_Hits_rPhi_; //t0timingValues
-  std::vector<float> muon_dtSeg_globY_Hits_rZ_; //dtGlobalPointYValues_Ztiming
-  std::vector<float> muon_dtSeg_t0timing_rZ_hits_;
+  std::vector<float> muon_r2_;
+  std::vector<float> muon_dtSeg_globY_rPhi_; //dtGlobalPointYValues
+  std::vector<float> muon_dtSeg_t0timing_rPhi_; //t0timingValues
+  std::vector<float> muon_dtSeg_globY_rZ_; //dtGlobalPointYValues_Ztiming
+  std::vector<float> muon_dtSeg_t0timing_rZ_;
 
   std::vector<float> Track_CorrelationFactor_rPhi_Timing_;
   std::vector<float> Track_CorrelationFactor_rZ_Timing_;
 
-  std::vector<int> muon_dtSeg_StationHit_;
-  std::vector<int> muon_dtSeg_SectorHit_;
-  std::vector<std::pair<int, int>> muon_dtSeg_stationSectorHit_rPhi_;
-  std::vector<std::pair<int, int>> muon_dtSeg_stationSectorHit_rZ_;
+
+  std::vector<std::pair<int, int>> muon_dtSeg_stationSector_rPhi_;
+  std::vector<std::pair<int, int>> muon_dtSeg_stationSector_rZ_;
 
   // general tracks
   int                track_n_;
@@ -389,6 +388,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   // Loop on the muon collection
   //------------------------------------------------------------------
 
+  std::vector<int> muon_dtSeg_Station_;
+  std::vector<int> muon_dtSeg_Sector_;
   muon_n_ = 0;
   for (unsigned int i = 0; i < muonCollectionHandle->size(); i++) {
     if (verbose_ > 2) LogPrint(MOD) << "\n  Analyzing track " << i ;
@@ -582,8 +583,9 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             if (verbose_ > 4) LogPrint(MOD) << "        >> Wheel /  Station / Sector / Layer " << dtChamberId.wheel()
               << " / " << dtChamberId.station() << " / "  << dtChamberId.sector() << " / " << dtLayerId.layer();
             
-            muon_dtSeg_StationHit_.push_back(dtChamberId.station());
-            muon_dtSeg_SectorHit_.push_back(dtChamberId.sector());
+            
+            muon_dtSeg_Station_.push_back(dtChamberId.station());
+            muon_dtSeg_Sector_.push_back(dtChamberId.sector());
 
             // Global Point coordinates
             GlobalPoint globalPoint = dtDet->toGlobal(segmentLocalPosition);
@@ -597,22 +599,20 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             if (verbose_ > 5) LogPrint(MOD) << "        >> eta = " << dtGlobalPointEta << " phi = " << dtGlobalPointPhi;
             muonSumEtaFromDTseg += dtGlobalPointEta;
             muonSumPhiFromDTseg += dtGlobalPointPhi;
-            if (t0timing != -999) {
-              muon_dtSeg_t0timing_Hits_rPhi_.push_back(t0timing);
-              muon_dtSeg_globY_Hits_rPhi_.push_back(dtGlobalPointY);
-            }
-            if (t0timingZed != 9999) {
-              muon_dtSeg_t0timing_rZ_hits_.push_back(t0timingZed); // HERE
-              muon_dtSeg_globY_Hits_rZ_.push_back(dtGlobalPointY);
-            }
-            for (size_t i = 0; i < muon_dtSeg_globY_Hits_rPhi_.size(); ++i) {
+            muon_dtSeg_t0timing_rPhi_.push_back(t0timing);
+            muon_dtSeg_globY_rPhi_.push_back(dtGlobalPointY);
+            
+            
+            muon_dtSeg_t0timing_rZ_.push_back(t0timingZed); // HERE
+            muon_dtSeg_globY_rZ_.push_back(dtGlobalPointY);
+            for (size_t i = 0; i < muon_dtSeg_globY_rPhi_.size(); ++i) {
               // cout << "dtGlobalPointYValues[" << i << "]: " << dtGlobalPointYValues[i] << endl;
-              if (verbose_ > 2) LogPrint(MOD) << "muon_dtSeg_globY_Hits_rPhi[" << i << "]: " << muon_dtSeg_globY_Hits_rPhi_[i] << endl;
+              if (verbose_ > 2) LogPrint(MOD) << "muon_dtSeg_globY_rPhi[" << i << "]: " << muon_dtSeg_globY_rPhi_[i] << endl;
             }
 
-            for (size_t i = 0; i < muon_dtSeg_t0timing_Hits_rPhi_.size(); ++i) {
+            for (size_t i = 0; i < muon_dtSeg_t0timing_rPhi_.size(); ++i) {
               // cout << "t0timingValues[" << i << "]: " << t0timingValues[i] << endl;
-              if (verbose_ > 2) LogPrint(MOD) << "muon_dtSeg_t0timing_Hits_rPhi[" << i << "]: " << muon_dtSeg_t0timing_Hits_rPhi_[i] << endl;
+              if (verbose_ > 2) LogPrint(MOD) << "muon_dtSeg_t0timing_rPhi[" << i << "]: " << muon_dtSeg_t0timing_rPhi_[i] << endl;
             }
 
             dtSeg_n++;
@@ -635,22 +635,22 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       muonAvgEtaFromDTseg = muonSumEtaFromDTseg / dtSeg_n;
       muonAvgPhiFromDTseg = muonSumPhiFromDTseg / dtSeg_n;
       
-      float rSquared = calculateRSquared( muon_dtSeg_globY_Hits_rPhi_, muon_dtSeg_t0timing_Hits_rPhi_);
+      float rSquared = calculateRSquared( muon_dtSeg_globY_rPhi_, muon_dtSeg_t0timing_rPhi_);
       // Store the R-squared value in the rSquaredValues vector
-      Track_Reconsruction_Score_.push_back( rSquared);
+      muon_r2_.push_back( rSquared);
 
-      float PearsonCorrelation = pearsonCorrelation(muon_dtSeg_globY_Hits_rPhi_, muon_dtSeg_t0timing_Hits_rPhi_);
+      float PearsonCorrelation = pearsonCorrelation(muon_dtSeg_globY_rPhi_, muon_dtSeg_t0timing_rPhi_);
       Track_CorrelationFactor_rPhi_Timing_.push_back( PearsonCorrelation);
 
-      for (size_t i = 0; i < muon_dtSeg_StationHit_.size(); ++i) {
-        muon_dtSeg_stationSectorHit_rPhi_.push_back(std::make_pair(muon_dtSeg_StationHit_[i], muon_dtSeg_SectorHit_[i]));
+      for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
+        muon_dtSeg_stationSector_rPhi_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
       }
       // Print the combined vector
       // cout << "Station and Sector Vector: ";
       int muonIndex = 1; // Initialize the Muon index
-      if (verbose_ > 14) LogPrint(MOD)  << "Muon rPhi hit Station and Sector: ";
-      for (const auto& pair : muon_dtSeg_stationSectorHit_rPhi_) {
-        if (verbose_ > 14) { LogPrint(MOD) << "Muon " << muonIndex << " Station " << pair.first << " in Sector " << pair.second << " ";
+      if (verbose_ > 16) LogPrint(MOD)  << "Muon rPhi Station and Sector: ";
+      for (const auto& pair : muon_dtSeg_stationSector_rPhi_) {
+        if (verbose_ > 16) { LogPrint(MOD) << "Muon " << muonIndex << " Station " << pair.first << " in Sector " << pair.second << " ";
         }
         muonIndex++;
       }
@@ -659,18 +659,18 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
 
 
-    float PearsonCorrelation_Z = pearsonCorrelation(muon_dtSeg_globY_Hits_rZ_, muon_dtSeg_t0timing_rZ_hits_);
+    float PearsonCorrelation_Z = pearsonCorrelation(muon_dtSeg_globY_rZ_, muon_dtSeg_t0timing_rZ_);
     Track_CorrelationFactor_rZ_Timing_.push_back( PearsonCorrelation_Z);
 
 
-      for (size_t i = 0; i < muon_dtSeg_StationHit_.size(); ++i) {
-        muon_dtSeg_stationSectorHit_rZ_.push_back(std::make_pair(muon_dtSeg_StationHit_[i], muon_dtSeg_SectorHit_[i]));
+      for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
+        muon_dtSeg_stationSector_rZ_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
       }
       // Print the combined vector
-      if (verbose_ > 14) LogPrint(MOD)  << "Muon rZ hit Station and Sector: ";
+      if (verbose_ > 16) LogPrint(MOD)  << "Muon rZ Station and Sector: ";
       int muonIndex = 1;
-      for (const auto& pair : muon_dtSeg_stationSectorHit_rZ_) {
-        if (verbose_ > 14) { LogPrint(MOD) << "Muon " << muonIndex   << " Station " << pair.first << " in Sector " << pair.second << " ";
+      for (const auto& pair : muon_dtSeg_stationSector_rZ_) {
+        if (verbose_ > 16) { LogPrint(MOD) << "Muon " << muonIndex   << " Station " << pair.first << " in Sector " << pair.second << " ";
         }
         muonIndex++;
       }
@@ -696,17 +696,17 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
       if (verbose_ > 2) LogPrint(MOD) << "Track_Reconsruction_Score:";
       string rSquaredStr;
-      for (float value : Track_Reconsruction_Score_) {
+      for (float value : muon_r2_) {
           rSquaredStr += to_string(value) + " ";
       }
       if (verbose_ > 2) LogPrint(MOD) << rSquaredStr << endl;
 
 
 
-      muon_dtSeg_globY_Hits_rPhi_.clear();
-      muon_dtSeg_t0timing_Hits_rPhi_.clear();
-      muon_dtSeg_globY_Hits_rZ_.clear();
-      muon_dtSeg_t0timing_rZ_hits_.clear();
+      muon_dtSeg_globY_rPhi_.clear();
+      muon_dtSeg_t0timing_rPhi_.clear();
+      muon_dtSeg_globY_rZ_.clear();
+      muon_dtSeg_t0timing_rZ_.clear();
 
     
     
@@ -859,7 +859,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   muon_dtSeg_eta_.clear();
   muon_dtSeg_phi_.clear();
   
-  Track_Reconsruction_Score_.clear();
+  muon_r2_.clear();
   Track_CorrelationFactor_rPhi_Timing_.clear();
   Track_CorrelationFactor_rZ_Timing_.clear();
 
@@ -871,10 +871,10 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   track_pt_.clear();
   track_ptErr_.clear();
 
-  muon_dtSeg_StationHit_.clear();
-  muon_dtSeg_SectorHit_.clear();
-  muon_dtSeg_stationSectorHit_rPhi_.clear();
-  muon_dtSeg_stationSectorHit_rZ_.clear();
+  muon_dtSeg_Station_.clear();
+  muon_dtSeg_Sector_.clear();
+  muon_dtSeg_stationSector_rPhi_.clear();
+  muon_dtSeg_stationSector_rZ_.clear();
   
 }
 
@@ -974,18 +974,17 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_globZ",      &muon_dtSeg_globZ_);
   outputTree_ -> Branch ( "muon_dtSeg_eta",        &muon_dtSeg_eta_);
   outputTree_ -> Branch ( "muon_dtSeg_phi",        &muon_dtSeg_phi_);
+  outputTree_ -> Branch( "muon_r2",                      &muon_r2_);
+
 
   outputTree_ -> Branch ( "muon_avgEtaFromDTseg",       &muon_avgEtaFromDTseg_);
   outputTree_ -> Branch ( "muon_avgPhiFromDTseg",       &muon_avgPhiFromDTseg_);
 
-  outputTree_ -> Branch( "Track_Reconsruction_Score",                      &Track_Reconsruction_Score_);
-  outputTree_ -> Branch( "Track_CorrelationFactor_rPhi_Timing",        &Track_CorrelationFactor_rPhi_Timing_);
+    outputTree_ -> Branch( "Track_CorrelationFactor_rPhi_Timing",        &Track_CorrelationFactor_rPhi_Timing_);
   outputTree_ -> Branch( "Track_CorrelationFactor_rZ_Timing",          &Track_CorrelationFactor_rZ_Timing_);
 
-  outputTree_ -> Branch( "muon_dtSeg_StationHit",               &muon_dtSeg_StationHit_);
-  outputTree_ -> Branch( "muon_dtSeg_SectorHit",                &muon_dtSeg_SectorHit_);
-  outputTree_ -> Branch( "muon_dtSeg_stationSectorHit_rPhi",    &muon_dtSeg_stationSectorHit_rPhi_);
-  outputTree_ -> Branch( "muon_dtSeg_stationSectorHit_rZ",      &muon_dtSeg_stationSectorHit_rZ_);
+  outputTree_ -> Branch( "muon_dtSeg_stationSector_rPhi",    &muon_dtSeg_stationSector_rPhi_);
+  outputTree_ -> Branch( "muon_dtSeg_stationSector_rZ",      &muon_dtSeg_stationSector_rZ_);
   
   outputTree_ -> Branch ( "muon_comb_ndof",             &muon_comb_ndof_);
   outputTree_ -> Branch ( "muon_comb_timeAtIpInOut",    &muon_comb_timeAtIpInOut_);
@@ -1035,10 +1034,10 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
 DEFINE_FWK_MODULE(EarthAsDMAnalyzer);
 
 
-using namespace std;
+// using namespace std;
 
   // Function to calculate the mean of a vector
-float mean(const vector<float>& data) {
+float mean(const std::vector<float>& data) {
     float sum = 0.0;
     for (size_t i = 0; i < data.size(); ++i) {
         sum += data[i];
@@ -1047,7 +1046,7 @@ float mean(const vector<float>& data) {
 }
 
 // Function to calculate the R-squared value
-float calculateRSquared(const vector<float>& x, const vector<float>& y) {
+float calculateRSquared(const std::vector<float>& x, const std::vector<float>& y) {
     if (x.size() != y.size() || x.size() == 0) {
         return 9999; // Handle invalid input
     }
