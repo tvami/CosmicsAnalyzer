@@ -211,9 +211,12 @@ private:
   std::vector<float> muon_dtSeg_phi_;
 
   unsigned int       simHit_n_;
-  std::vector<float> simHit_x_;
-  std::vector<float> simHit_y_;
-  std::vector<float> simHit_z_;
+  std::vector<float> simHit_entry_x_;
+  std::vector<float> simHit_entry_y_;
+  std::vector<float> simHit_entry_z_;
+  std::vector<float> simHit_exit_x_;
+  std::vector<float> simHit_exit_y_;
+  std::vector<float> simHit_exit_z_;
   std::vector<float> simHit_tof_;
 
   std::vector<float> muon_r2_;
@@ -322,9 +325,12 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     simhitTC = *(SimHitCollection.product());
     simHit_n_ = 0;
     for (PSimHitContainer::const_iterator simHit=simhitTC.begin(); simHit!=simhitTC.end(); simHit++){
-      simHit_x_.push_back(simHit->entryPoint().x());
-      simHit_y_.push_back(simHit->entryPoint().y());
-      simHit_z_.push_back(simHit->entryPoint().z());
+      simHit_entry_x_.push_back(simHit->entryPoint().x());
+      simHit_entry_y_.push_back(simHit->entryPoint().y());
+      simHit_entry_z_.push_back(simHit->entryPoint().z());
+      simHit_exit_x_.push_back(simHit->exitPoint().x());
+      simHit_exit_y_.push_back(simHit->exitPoint().y());
+      simHit_exit_z_.push_back(simHit->exitPoint().z());
       simHit_tof_.push_back(simHit->tof());
       simHit_n_++;
     }
@@ -887,9 +893,12 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   muon_dtSeg_eta_.clear();
   muon_dtSeg_phi_.clear();
 
-  simHit_x_.clear();
-  simHit_y_.clear();
-  simHit_z_.clear();
+  simHit_entry_x_.clear();
+  simHit_entry_y_.clear();
+  simHit_entry_z_.clear();
+  simHit_exit_x_.clear();
+  simHit_exit_y_.clear();
+  simHit_exit_z_.clear();
   simHit_tof_.clear();
   
   muon_r2_.clear();
@@ -1010,9 +1019,12 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_phi",        &muon_dtSeg_phi_);
 
   outputTree_ -> Branch ( "simHit_n",          &simHit_n_);
-  outputTree_ -> Branch ( "simHit_x",          &simHit_x_);
-  outputTree_ -> Branch ( "simHit_y",          &simHit_y_);
-  outputTree_ -> Branch ( "simHit_z",          &simHit_z_);
+  outputTree_ -> Branch ( "simHit_entry_x",          &simHit_entry_x_);
+  outputTree_ -> Branch ( "simHit_entry_y",          &simHit_entry_y_);
+  outputTree_ -> Branch ( "simHit_entry_z",          &simHit_entry_z_);
+  outputTree_ -> Branch ( "simHit_exit_x",          &simHit_exit_x_);
+  outputTree_ -> Branch ( "simHit_exit_y",          &simHit_exit_y_);
+  outputTree_ -> Branch ( "simHit_exit_z",          &simHit_exit_z_);
   outputTree_ -> Branch ( "simHit_tof",        &simHit_tof_);
 
   outputTree_ -> Branch ( "muon_avgEtaFromDTseg",       &muon_avgEtaFromDTseg_);
