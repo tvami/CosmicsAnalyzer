@@ -94,6 +94,7 @@ private:
   // ----------member data ---------------------------
   int verbose_;
   int isData_;
+  int hasSim_;
   edm::EDGetTokenT< std::vector<reco::GenParticle> > genParticlesToken_;
   edm::EDGetTokenT<std::vector<reco::Muon>> muonToken_;
   edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;
@@ -239,7 +240,6 @@ private:
   std::vector<float> track_pt_;
   std::vector<float> track_ptErr_;
 
-
 };
 
 //
@@ -248,6 +248,7 @@ private:
 EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  verbose_(iConfig.getUntrackedParameter<int>("verbosityLevel")),
  isData_(iConfig.getUntrackedParameter<int>("isData")),
+ hasSim_(iConfig.getUntrackedParameter<int>("hasSim")),
  genParticlesToken_(consumes< std::vector<reco::GenParticle> >( edm::InputTag("genParticles") )),
  muonToken_(consumes<std::vector<reco::Muon>>(iConfig.getParameter<edm::InputTag>("muonCollection"))),
  muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("muonTimeCollection"))),
@@ -293,11 +294,6 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   edm::Handle<reco::MuonCollection> muonCollectionHandle;
   iEvent.getByToken(muonToken_,muonCollectionHandle);
 
-  edm::Handle<edm::PSimHitContainer> SimHitCollection;
-  PSimHitContainer simhitTC;
-  iEvent.getByToken(PSimHitContainerToken_, SimHitCollection);
-  simhitTC = *(SimHitCollection.product()); 
-
   //vector<reco::Muon> muonColl = iEvent.get(muonToken_);
   
   edm::Handle<reco::MuonTimeExtraMap> tofMap;
@@ -318,13 +314,20 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   // SimHits saved in the ntuple
   //------------------------------------------------------------------
   
-  simHit_n_ = 0;
-  for (PSimHitContainer::const_iterator simHit=simhitTC.begin(); simHit!=simhitTC.end(); simHit++){
-    simHit_x_.push_back(simHit->entryPoint().x());
-    simHit_y_.push_back(simHit->entryPoint().y());
-    simHit_z_.push_back(simHit->entryPoint().z());
-    simHit_tof_.push_back(simHit->tof());
-    simHit_n_++;
+  edm::Handle<edm::PSimHitContainer> SimHitCollection;
+
+  if (hasSim_) {
+    PSimHitContainer simhitTC;
+    iEvent.getByToken(PSimHitContainerToken_, SimHitCollection);
+    simhitTC = *(SimHitCollection.product());
+    simHit_n_ = 0;
+    for (PSimHitContainer::const_iterator simHit=simhitTC.begin(); simHit!=simhitTC.end(); simHit++){
+      simHit_x_.push_back(simHit->entryPoint().x());
+      simHit_y_.push_back(simHit->entryPoint().y());
+      simHit_z_.push_back(simHit->entryPoint().z());
+      simHit_tof_.push_back(simHit->tof());
+      simHit_n_++;
+    }
   }
 
   //------------------------------------------------------------------
@@ -1051,6 +1054,8 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   ->setComment("Higher the integer more verbose");
   desc.addUntracked("isData", 0)
   ->setComment("0 means MC, 1 means data");
+  desc.addUntracked("hasSim", 1)
+  ->setComment("1 means SimHits exists, 0 means not");
 //  desc.add("muonCollection", edm::InputTag("splitMuons")) //muons1Leg
 //  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
   desc.add("muonCollection", edm::InputTag("splitMuons"))

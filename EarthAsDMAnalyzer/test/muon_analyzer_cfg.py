@@ -62,7 +62,8 @@ process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
     PSimHitContainer = cms.InputTag("g4SimHits","MuonDTHits"),
     #muonCollection = cms.InputTag("lhcSTAMuons"),
     #muonCollection = cms.InputTag("muons1Leg"),
-    isData = cms.untracked.int32(0)
+    isData = cms.untracked.int32(0),
+    hasSim = cms.untracked.int32(1)
     #isData = cms.untracked.int32(1)
 )
 
