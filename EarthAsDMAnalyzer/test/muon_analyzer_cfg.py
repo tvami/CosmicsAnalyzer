@@ -36,17 +36,19 @@ process.source = cms.Source("PoolSource",
 #    fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")
     # fileNames = cms.untracked.vstring("file:/home/users/dazhang/works/CosmicMuonSim/RAW-RECO/TRK-Run3Winter23Reco-00009-0to75-100000events.root")
     # fileNames = cms.untracked.vstring("file:/home/users/dazhang/works/CosmicMuonSim/CMSSW_12_6_5/src/TRK-Run3Winter23Reco-00009.root")
-    fileNames = cms.untracked.vstring("file:/ceph/cms/store/user/lbrennan/EarthAsDM/Cosmics/crab_RAWtoReco-0to75Theta-4to3000GeV-126X_mcRun3_2022cosmics_realistic_deco_v1_v4/230811_215634/0000/3RR-0to75Theta-4to3000GeV_35.root")
+    fileNames = cms.untracked.vstring("file:3RR-0to75Theta-4to3000GeV_49.root")
     #fileNames = cms.untracked.vstring("file:/ceph/cms/store/user/lbrennan/EarthAsDM/Cosmics/crab_RAWtoReco-91to180Theta-3000to4000GeV-126X_mcRun3_2022cosmics_realistic_deco_v1_v4/230811_215442/0000/3RR-91to180Theta-3000to4000GeV_78.root")
 )
 #    fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")
 
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
+#Structure: ('run num, event num, ls num')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:276500:27649928')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:275500:1-1:276500:max')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:276489:27648835')
-process.source.eventsToProcess = cms.untracked.VEventRange('1:77458:7745742')
+#process.source.eventsToProcess = cms.untracked.VEventRange('1:77458:7745742')
+#process.source.eventsToProcess = cms.untracked.VEventRange('1:112969:11296881')
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
@@ -57,9 +59,11 @@ process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
     #muonCollection = cms.InputTag("splitMuons"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
     muonCollection = cms.InputTag("muons"),
     muonTimeCollection = cms.InputTag("muons","dt"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
+    PSimHitContainer = cms.InputTag("g4SimHits","MuonDTHits"),
     #muonCollection = cms.InputTag("lhcSTAMuons"),
     #muonCollection = cms.InputTag("muons1Leg"),
-    isData = cms.untracked.int32(0)
+    isData = cms.untracked.int32(0),
+    hasSim = cms.untracked.int32(1)
     #isData = cms.untracked.int32(1)
 )
 
@@ -68,13 +72,7 @@ process.TFileService = cms.Service("TFileService",
     # fileName = cms.string("ntuple_data.root")
     # fileName = cms.string("ntuple_MC_theta0to75_100kEvts.root")
     # fileName = cms.string("ntuple_MC_theta0to75_100Evts.root")
-    fileName = cms.string("ntuple_MC_RR-0to75Theta-4to3000GeV_35_v4.root")
+    fileName = cms.string("ntuple_MC_RR-0to75Theta-4to3000GeV_49_v4.root")
 )
 
 process.p = cms.Path(process.muonPhiAnalyzer)
-
-
-
-
-
-

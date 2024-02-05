@@ -57,6 +57,7 @@
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
+#include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 #include "DataFormats/PatCandidates/interface/PFIsolation.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
@@ -93,9 +94,11 @@ private:
   // ----------member data ---------------------------
   int verbose_;
   int isData_;
+  int hasSim_;
   edm::EDGetTokenT< std::vector<reco::GenParticle> > genParticlesToken_;
   edm::EDGetTokenT<std::vector<reco::Muon>> muonToken_;
   edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;
+  edm::EDGetTokenT<edm::PSimHitContainer> PSimHitContainerToken_;
   edm::EDGetTokenT< CSCSegmentCollection > cscSegmentToken_;
   edm::EDGetTokenT< DTRecSegment4DCollection > dtSegmentToken_;
   edm::ESGetToken<CSCGeometry, MuonGeometryRecord> muonCSCGeomToken_;
@@ -207,6 +210,15 @@ private:
   std::vector<float> muon_dtSeg_eta_;
   std::vector<float> muon_dtSeg_phi_;
 
+  unsigned int       simHit_n_;
+  std::vector<float> simHit_entry_x_;
+  std::vector<float> simHit_entry_y_;
+  std::vector<float> simHit_entry_z_;
+  std::vector<float> simHit_exit_x_;
+  std::vector<float> simHit_exit_y_;
+  std::vector<float> simHit_exit_z_;
+  std::vector<float> simHit_tof_;
+
   std::vector<float> muon_r2_;
   std::vector<float> muon_dtSeg_rPhi_globY_; //dtGlobalPointYValues
   std::vector<float> muon_dtSeg_rPhi_t0timing_; //t0timingValues
@@ -231,7 +243,6 @@ private:
   std::vector<float> track_pt_;
   std::vector<float> track_ptErr_;
 
-
 };
 
 //
@@ -240,9 +251,11 @@ private:
 EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  verbose_(iConfig.getUntrackedParameter<int>("verbosityLevel")),
  isData_(iConfig.getUntrackedParameter<int>("isData")),
+ hasSim_(iConfig.getUntrackedParameter<int>("hasSim")),
  genParticlesToken_(consumes< std::vector<reco::GenParticle> >( edm::InputTag("genParticles") )),
  muonToken_(consumes<std::vector<reco::Muon>>(iConfig.getParameter<edm::InputTag>("muonCollection"))),
  muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("muonTimeCollection"))),
+ PSimHitContainerToken_(consumes<edm::PSimHitContainer>(iConfig.getParameter<edm::InputTag>("PSimHitContainer"))),
  cscSegmentToken_(consumes< CSCSegmentCollection >( edm::InputTag("cscSegments") )),
  dtSegmentToken_(consumes< DTRecSegment4DCollection >( edm::InputTag("dt4DSegments") )),
  offlinePrimaryVerticesToken_(consumes<std::vector<reco::Vertex>>(edm::InputTag("offlinePrimaryVertices"))),
@@ -284,7 +297,6 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   edm::Handle<reco::MuonCollection> muonCollectionHandle;
   iEvent.getByToken(muonToken_,muonCollectionHandle);
 
-
   //vector<reco::Muon> muonColl = iEvent.get(muonToken_);
   
   edm::Handle<reco::MuonTimeExtraMap> tofMap;
@@ -301,6 +313,29 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   
   muonDTGeom = &iSetup.getData(muonDTGeomToken_);
   
+  //------------------------------------------------------------------
+  // SimHits saved in the ntuple
+  //------------------------------------------------------------------
+  
+  edm::Handle<edm::PSimHitContainer> SimHitCollection;
+
+  if (hasSim_) {
+    PSimHitContainer simhitTC;
+    iEvent.getByToken(PSimHitContainerToken_, SimHitCollection);
+    simhitTC = *(SimHitCollection.product());
+    simHit_n_ = 0;
+    for (PSimHitContainer::const_iterator simHit=simhitTC.begin(); simHit!=simhitTC.end(); simHit++){
+      simHit_entry_x_.push_back(simHit->entryPoint().x());
+      simHit_entry_y_.push_back(simHit->entryPoint().y());
+      simHit_entry_z_.push_back(simHit->entryPoint().z());
+      simHit_exit_x_.push_back(simHit->exitPoint().x());
+      simHit_exit_y_.push_back(simHit->exitPoint().y());
+      simHit_exit_z_.push_back(simHit->exitPoint().z());
+      simHit_tof_.push_back(simHit->tof());
+      simHit_n_++;
+    }
+  }
+
   //------------------------------------------------------------------
   // GenParticles to be saved in the ntuple
   //------------------------------------------------------------------
@@ -857,6 +892,14 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   muon_dtSeg_globZ_.clear();
   muon_dtSeg_eta_.clear();
   muon_dtSeg_phi_.clear();
+
+  simHit_entry_x_.clear();
+  simHit_entry_y_.clear();
+  simHit_entry_z_.clear();
+  simHit_exit_x_.clear();
+  simHit_exit_y_.clear();
+  simHit_exit_z_.clear();
+  simHit_tof_.clear();
   
   muon_r2_.clear();
   muon_rPhiSeg_correlationFactor_.clear();
@@ -975,6 +1018,14 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_eta",        &muon_dtSeg_eta_);
   outputTree_ -> Branch ( "muon_dtSeg_phi",        &muon_dtSeg_phi_);
 
+  outputTree_ -> Branch ( "simHit_n",          &simHit_n_);
+  outputTree_ -> Branch ( "simHit_entry_x",          &simHit_entry_x_);
+  outputTree_ -> Branch ( "simHit_entry_y",          &simHit_entry_y_);
+  outputTree_ -> Branch ( "simHit_entry_z",          &simHit_entry_z_);
+  outputTree_ -> Branch ( "simHit_exit_x",          &simHit_exit_x_);
+  outputTree_ -> Branch ( "simHit_exit_y",          &simHit_exit_y_);
+  outputTree_ -> Branch ( "simHit_exit_z",          &simHit_exit_z_);
+  outputTree_ -> Branch ( "simHit_tof",        &simHit_tof_);
 
   outputTree_ -> Branch ( "muon_avgEtaFromDTseg",       &muon_avgEtaFromDTseg_);
   outputTree_ -> Branch ( "muon_avgPhiFromDTseg",       &muon_avgPhiFromDTseg_);
@@ -1015,12 +1066,16 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   ->setComment("Higher the integer more verbose");
   desc.addUntracked("isData", 0)
   ->setComment("0 means MC, 1 means data");
+  desc.addUntracked("hasSim", 1)
+  ->setComment("1 means SimHits exists, 0 means not");
 //  desc.add("muonCollection", edm::InputTag("splitMuons")) //muons1Leg
 //  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
   desc.add("muonCollection", edm::InputTag("splitMuons"))
   ->setComment("Muon collection");
   desc.add("muonTimeCollection", edm::InputTag("splitMuons", "dt"))
   ->setComment("Input collection for combined muon timing information");
+  desc.add("PSimHitContainer", edm::InputTag("g4SimHits","MuonDTHits"))
+  ->setComment("Input collection for g4SimHits Hit information");
   desc.add("TriggerResults", edm::InputTag("TriggerResults","","HLT"))
   ->setComment("HLTrigger results");
   desc.add("trackCollection", edm::InputTag("tevMuons:default:RECO"))
