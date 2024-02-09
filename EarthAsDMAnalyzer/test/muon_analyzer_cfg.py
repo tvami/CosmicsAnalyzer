@@ -43,7 +43,6 @@ process.source = cms.Source("PoolSource",
 
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
-#Structure: ('run num, event num, ls num')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:276500:27649928')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:275500:1-1:276500:max')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:276489:27648835')
