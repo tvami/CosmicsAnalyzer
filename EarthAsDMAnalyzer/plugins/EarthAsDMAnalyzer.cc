@@ -75,6 +75,10 @@
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h"
 #include "Geometry/DTGeometry/interface/DTGeometry.h"
 #include "Geometry/Records/interface/MuonGeometryRecord.h"
+#include "CondFormats/DTObjects/interface/DTT0.h"
+#include "CondFormats/DataRecord/interface/DTT0Rcd.h"
+#include "CondFormats/DTObjects/interface/DTTtrig.h"
+#include "CondFormats/DataRecord/interface/DTTtrigRcd.h"
 
 //
 // class declaration
@@ -104,7 +108,11 @@ private:
   edm::ESGetToken<CSCGeometry, MuonGeometryRecord> muonCSCGeomToken_;
   edm::EDGetTokenT<std::vector<reco::Vertex>> offlinePrimaryVerticesToken_;
   const DTGeometry *muonDTGeom;
+  const DTT0* t0Map;
+  const DTTtrig* tTrigMap;
   edm::ESGetToken<DTGeometry, MuonGeometryRecord> muonDTGeomToken_;
+  edm::ESGetToken<DTT0, DTT0Rcd> t0Token_;
+  edm::ESGetToken<DTTtrig, DTTtrigRcd> ttrigToken_;
   edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
   edm::EDGetTokenT<std::vector<reco::Track>> tracksToken_;
   
@@ -219,6 +227,7 @@ private:
   std::vector<float> muon_r2_;
   std::vector<float> muon_dtSeg_rPhi_globY_; //dtGlobalPointYValues
   std::vector<float> muon_dtSeg_rPhi_t0timing_; //t0timingValues
+  std::vector<float> muon_dtSeg_rPhi_t0timingCorrected_; //t0timingCorrectedValues
   std::vector<float> muon_dtSeg_rZ_globY_; //dtGlobalPointYValues_Ztiming
   std::vector<float> muon_dtSeg_rZ_t0timing_;
 
@@ -257,6 +266,8 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  dtSegmentToken_(consumes< DTRecSegment4DCollection >( edm::InputTag("dt4DSegments") )),
  offlinePrimaryVerticesToken_(consumes<std::vector<reco::Vertex>>(edm::InputTag("offlinePrimaryVertices"))),
  muonDTGeomToken_(esConsumes()),
+ t0Token_(esConsumes()),
+ ttrigToken_(esConsumes()),
  triggerResultsToken_(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("TriggerResults"))),
  tracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("trackCollection")))
 {}
@@ -309,6 +320,14 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 //  iEvent.getByToken(dtSegmentToken_, dtSegments);
   
   muonDTGeom = &iSetup.getData(muonDTGeomToken_);
+
+  ESHandle<DTT0> t0H;
+  t0H = iSetup.getHandle(t0Token_);
+  t0Map = &iSetup.getData(t0Token_);
+
+  ESHandle<DTTtrig> tTrigH;
+  tTrigH = iSetup.getHandle(ttrigToken_);
+  tTrigMap = &iSetup.getData(ttrigToken_);
   
   //------------------------------------------------------------------
   // SimHits saved in the ntuple
@@ -591,6 +610,9 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
           edm::Ref<DTRecSegment4DCollection> dtSegment = segment->dtSegmentRef;
           int found = 0;
           float t0timing = 9999;
+          float t0timingCorrection = 9999;
+          float t0timingCorrected = 9999;
+          double smallestDist = 9999.;
           float t0timingZed = 9999;
           float dtGlobalPointX = 9999;
           float dtGlobalPointY = 9999;
@@ -639,9 +661,66 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             muonSumEtaFromDTseg += dtGlobalPointEta;
             muonSumPhiFromDTseg += dtGlobalPointPhi;
             muon_dtSeg_rPhi_t0timing_.push_back(t0timing);
+
+            // Loop on wires and calculate timing offset
+            for (vector<const DTSuperLayer*>::const_iterator sl = muonDTGeom->superLayers().begin(); sl != muonDTGeom->superLayers().end();
+              ++sl) {
+              for (vector<const DTLayer*>::const_iterator layer = (*sl)->layers().begin(); layer != (*sl)->layers().end();
+                  ++layer) {
+                // Access layer topology
+                const DTTopology& dtTopo = (*layer)->specificTopology();
+                const int firstWire = dtTopo.firstChannel();
+                const int lastWire = dtTopo.lastChannel();
+              
+                  //Loop on wires
+                  for (int wire = firstWire; wire <= lastWire; ++wire) {
+                    LocalPoint locWirePos(dtTopo.wirePosition(wire), 0, 0);
+                    const GlobalPoint globWirePos = (*layer)->toGlobal(locWirePos);
+
+                    float wireGlobalPointX = globWirePos.x();
+                    float wireGlobalPointY = globWirePos.y();
+                    float wireGlobalPointZ = globWirePos.z();
+                    float dist = std::sqrt(std::pow((wireGlobalPointX - dtGlobalPointX), 2) + std::pow((wireGlobalPointY - dtGlobalPointY), 2) + std::pow((wireGlobalPointZ - dtGlobalPointZ), 2));
+                    
+                    // Calculate offset
+                    if (dist < smallestDist) {
+                      float ttrigMean = 0;
+                      float ttrigSigma = 0;
+                      float kFactor = 0;
+                      //float t0 = 0;
+                      //float t0rms = 0;
+                      //float wirePropCorr = 0;
+                      //float tofCorr = 0;
+
+                      smallestDist = dist;
+                      DTWireId wireId((*layer)->id(), wire);
+
+                      // For Cosmics, wirePropCorr and tofCorr aren't applied. The t0 correction
+                      // seems not to have been applied either
+
+                      // float halfL = (*layer)->specificTopology().cellLenght() / 2;
+                      // float wireCoord = (*layer)->toLocal(globalPoint).y();
+                      // float propgL = halfL - wireCoord;
+                      // wirePropCorr = propgL / 24.4;
+
+                      // float flightToHit = globalPoint.mag();
+                      // float flightToWire = (*layer)->toGlobal(LocalPoint((*layer)->specificTopology().wirePosition(wireId.wire()), 0., 0.)).mag();
+                      // tofCorr = (flightToWire - flightToHit) / 29.9792458;
+
+                      //t0Map->get(wireId, t0, t0rms, DTTimeUnits::ns);
+                      tTrigMap->get(wireId.superlayerId(), ttrigMean, ttrigSigma, kFactor, DTTimeUnits::ns);
+
+                      // t0timingCorrection = t0 + ttrigMean + (kFactor * ttrigSigma) + wirePropCorr - tofCorr;
+                      
+                      t0timingCorrection = ttrigMean + (kFactor * ttrigSigma);
+                    }
+                    }
+                }
+            }
+            
             muon_dtSeg_rPhi_globY_.push_back(dtGlobalPointY);
-            
-            
+            t0timingCorrected = t0timing+t0timingCorrection;
+            muon_dtSeg_rPhi_t0timingCorrected_.push_back(t0timingCorrected);
             muon_dtSeg_rZ_t0timing_.push_back(t0timingZed); // HERE
             muon_dtSeg_rZ_globY_.push_back(dtGlobalPointY);
             for (size_t i = 0; i < muon_dtSeg_rPhi_globY_.size(); ++i) {
@@ -657,7 +736,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             dtSeg_n++;
           }
           muon_dtSeg_found_.push_back( found);
-          muon_dtSeg_t0timing_.push_back( t0timing);
+          muon_dtSeg_t0timing_.push_back( t0timingCorrected);
           muon_dtSeg_globX_.push_back( dtGlobalPointX);
           muon_dtSeg_globY_.push_back( dtGlobalPointY);
           muon_dtSeg_globZ_.push_back( dtGlobalPointZ);
@@ -674,11 +753,11 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       muonAvgEtaFromDTseg = muonSumEtaFromDTseg / dtSeg_n;
       muonAvgPhiFromDTseg = muonSumPhiFromDTseg / dtSeg_n;
       
-      float rSquared = calculateRSquared( muon_dtSeg_rPhi_globY_, muon_dtSeg_rPhi_t0timing_);
+      float rSquared = calculateRSquared( muon_dtSeg_rPhi_globY_, muon_dtSeg_rPhi_t0timingCorrected_);
       // Store the R-squared value in the rSquaredValues vector
       muon_r2_.push_back( rSquared);
 
-      float PearsonCorrelation = pearsonCorrelation(muon_dtSeg_rPhi_globY_, muon_dtSeg_rPhi_t0timing_);
+      float PearsonCorrelation = pearsonCorrelation(muon_dtSeg_rPhi_globY_, muon_dtSeg_rPhi_t0timingCorrected_);
         muon_rPhiSeg_correlationFactor_.push_back( PearsonCorrelation);
 
       for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
@@ -744,6 +823,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
       muon_dtSeg_rPhi_globY_.clear();
       muon_dtSeg_rPhi_t0timing_.clear();
+      muon_dtSeg_rPhi_t0timingCorrected_.clear();
       muon_dtSeg_rZ_globY_.clear();
       muon_dtSeg_rZ_t0timing_.clear();
 
