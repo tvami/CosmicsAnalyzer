@@ -236,8 +236,8 @@ private:
   
   std::vector<int> muon_dtSeg_Station_;
   std::vector<int> muon_dtSeg_Sector_;
-  std::vector<std::pair<int, int>> muon_dtSeg_rPhi_stationSector_;
-  std::vector<std::pair<int, int>> muon_dtSeg_rZ_stationSector_;
+  //std::vector<std::pair<int, int>> muon_dtSeg_rPhi_stationSector_;
+  //std::vector<std::pair<int, int>> muon_dtSeg_rZ_stationSector_;
 
   // general tracks
   int                track_n_;
@@ -332,13 +332,14 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   //------------------------------------------------------------------
   // SimHits saved in the ntuple
   //------------------------------------------------------------------
-  
-  edm::Handle<edm::PSimHitContainer> SimHitCollection;
 
   if (hasSim_) {
+    edm::Handle<edm::PSimHitContainer> SimHitCollection;
     PSimHitContainer simhitTC;
+
     iEvent.getByToken(PSimHitContainerToken_, SimHitCollection);
     simhitTC = *(SimHitCollection.product());
+    
     simHit_n_ = 0;
     for (PSimHitContainer::const_iterator simHit=simhitTC.begin(); simHit!=simhitTC.end(); simHit++){
       float simHitGlobalPointX = 9999;
@@ -610,15 +611,14 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
           edm::Ref<DTRecSegment4DCollection> dtSegment = segment->dtSegmentRef;
           int found = 0;
           float t0timing = 9999;
-          float t0timingCorrection = 9999;
-          float t0timingCorrected = 9999;
-          double smallestDist = 9999.;
           float t0timingZed = 9999;
           float dtGlobalPointX = 9999;
           float dtGlobalPointY = 9999;
           float dtGlobalPointZ = 9999;
           float dtGlobalPointEta = 9999;
           float dtGlobalPointPhi = 9999;
+          float station = 9999;
+          float sector = 9999;
           
           if (!dtSegment.isNull()) {
             found = 1;
@@ -644,9 +644,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             if (verbose_ > 4) LogPrint(MOD) << "        >> Wheel /  Station / Sector / Layer " << dtChamberId.wheel()
               << " / " << dtChamberId.station() << " / "  << dtChamberId.sector() << " / " << dtLayerId.layer();
             
-            
-            muon_dtSeg_Station_.push_back(dtChamberId.station());
-            muon_dtSeg_Sector_.push_back(dtChamberId.sector());
+            station = dtChamberId.station();
+            sector = dtChamberId.sector();
 
             // Global Point coordinates
             GlobalPoint globalPoint = dtDet->toGlobal(segmentLocalPosition);
@@ -661,66 +660,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             muonSumEtaFromDTseg += dtGlobalPointEta;
             muonSumPhiFromDTseg += dtGlobalPointPhi;
             muon_dtSeg_rPhi_t0timing_.push_back(t0timing);
-
-            // Loop on wires and calculate timing offset
-            for (vector<const DTSuperLayer*>::const_iterator sl = muonDTGeom->superLayers().begin(); sl != muonDTGeom->superLayers().end();
-              ++sl) {
-              for (vector<const DTLayer*>::const_iterator layer = (*sl)->layers().begin(); layer != (*sl)->layers().end();
-                  ++layer) {
-                // Access layer topology
-                const DTTopology& dtTopo = (*layer)->specificTopology();
-                const int firstWire = dtTopo.firstChannel();
-                const int lastWire = dtTopo.lastChannel();
-              
-                  //Loop on wires
-                  for (int wire = firstWire; wire <= lastWire; ++wire) {
-                    LocalPoint locWirePos(dtTopo.wirePosition(wire), 0, 0);
-                    const GlobalPoint globWirePos = (*layer)->toGlobal(locWirePos);
-
-                    float wireGlobalPointX = globWirePos.x();
-                    float wireGlobalPointY = globWirePos.y();
-                    float wireGlobalPointZ = globWirePos.z();
-                    float dist = std::sqrt(std::pow((wireGlobalPointX - dtGlobalPointX), 2) + std::pow((wireGlobalPointY - dtGlobalPointY), 2) + std::pow((wireGlobalPointZ - dtGlobalPointZ), 2));
-                    
-                    // Calculate offset
-                    if (dist < smallestDist) {
-                      float ttrigMean = 0;
-                      float ttrigSigma = 0;
-                      float kFactor = 0;
-                      //float t0 = 0;
-                      //float t0rms = 0;
-                      //float wirePropCorr = 0;
-                      //float tofCorr = 0;
-
-                      smallestDist = dist;
-                      DTWireId wireId((*layer)->id(), wire);
-
-                      // For Cosmics, wirePropCorr and tofCorr aren't applied. The t0 correction
-                      // seems not to have been applied either
-
-                      // float halfL = (*layer)->specificTopology().cellLenght() / 2;
-                      // float wireCoord = (*layer)->toLocal(globalPoint).y();
-                      // float propgL = halfL - wireCoord;
-                      // wirePropCorr = propgL / 24.4;
-
-                      // float flightToHit = globalPoint.mag();
-                      // float flightToWire = (*layer)->toGlobal(LocalPoint((*layer)->specificTopology().wirePosition(wireId.wire()), 0., 0.)).mag();
-                      // tofCorr = (flightToWire - flightToHit) / 29.9792458;
-
-                      //t0Map->get(wireId, t0, t0rms, DTTimeUnits::ns);
-                      tTrigMap->get(wireId.superlayerId(), ttrigMean, ttrigSigma, kFactor, DTTimeUnits::ns);
-
-                      // t0timingCorrection = t0 + ttrigMean + (kFactor * ttrigSigma) + wirePropCorr - tofCorr;
-                      
-                      t0timingCorrection = ttrigMean + (kFactor * ttrigSigma);
-                    }
-                    }
-                }
-            }
-            
             muon_dtSeg_rPhi_globY_.push_back(dtGlobalPointY);
-            t0timingCorrected = t0timing+t0timingCorrection;
-            muon_dtSeg_rPhi_t0timingCorrected_.push_back(t0timingCorrected);
+            muon_dtSeg_rPhi_t0timingCorrected_.push_back(t0timing);
             muon_dtSeg_rZ_t0timing_.push_back(t0timingZed); // HERE
             muon_dtSeg_rZ_globY_.push_back(dtGlobalPointY);
             for (size_t i = 0; i < muon_dtSeg_rPhi_globY_.size(); ++i) {
@@ -736,12 +677,14 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             dtSeg_n++;
           }
           muon_dtSeg_found_.push_back( found);
-          muon_dtSeg_t0timing_.push_back( t0timingCorrected);
+          muon_dtSeg_t0timing_.push_back( t0timing);
           muon_dtSeg_globX_.push_back( dtGlobalPointX);
           muon_dtSeg_globY_.push_back( dtGlobalPointY);
           muon_dtSeg_globZ_.push_back( dtGlobalPointZ);
           muon_dtSeg_eta_.push_back( dtGlobalPointEta);
           muon_dtSeg_phi_.push_back( dtGlobalPointPhi);
+          muon_dtSeg_Station_.push_back( station);
+          muon_dtSeg_Sector_.push_back( sector);
         } // end loop on segments
         dtChamb_n++;
       } // end loop on chamber matches
@@ -760,18 +703,18 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       float PearsonCorrelation = pearsonCorrelation(muon_dtSeg_rPhi_globY_, muon_dtSeg_rPhi_t0timingCorrected_);
         muon_rPhiSeg_correlationFactor_.push_back( PearsonCorrelation);
 
-      for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
-        muon_dtSeg_rPhi_stationSector_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
-      }
+      // for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
+      //   muon_dtSeg_rPhi_stationSector_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
+      // }
       // Print the combined vector
       // cout << "Station and Sector Vector: ";
-      int muonIndex = 1; // Initialize the Muon index
-      if (verbose_ > 16) LogPrint(MOD)  << "Muon rPhi Station and Sector: ";
-      for (const auto& pair : muon_dtSeg_rPhi_stationSector_) {
-        if (verbose_ > 16) { LogPrint(MOD) << "Muon " << muonIndex << " Station " << pair.first << " in Sector " << pair.second << " ";
-        }
-        muonIndex++;
-      }
+      // int muonIndex = 1; // Initialize the Muon index
+      // if (verbose_ > 16) LogPrint(MOD)  << "Muon rPhi Station and Sector: ";
+      // for (const auto& pair : muon_dtSeg_rPhi_stationSector_) {
+      //   if (verbose_ > 16) { LogPrint(MOD) << "Muon " << muonIndex << " Station " << pair.first << " in Sector " << pair.second << " ";
+      //   }
+      //   muonIndex++;
+      // }
       // cout << endl;
       }
 
@@ -781,17 +724,17 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       muon_rZSeg_correlationFactor_.push_back( PearsonCorrelation_Z);
 
 
-      for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
-        muon_dtSeg_rZ_stationSector_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
-      }
-      // Print the combined vector
-      if (verbose_ > 16) LogPrint(MOD)  << "Muon rZ Station and Sector: ";
-      int muonIndex = 1;
-      for (const auto& pair : muon_dtSeg_rZ_stationSector_) {
-        if (verbose_ > 16) { LogPrint(MOD) << "Muon " << muonIndex   << " Station " << pair.first << " in Sector " << pair.second << " ";
-        }
-        muonIndex++;
-      }
+      // for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
+      //   muon_dtSeg_rZ_stationSector_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
+      // }
+      // // Print the combined vector
+      // if (verbose_ > 16) LogPrint(MOD)  << "Muon rZ Station and Sector: ";
+      // int muonIndex = 1;
+      // for (const auto& pair : muon_dtSeg_rZ_stationSector_) {
+      //   if (verbose_ > 16) { LogPrint(MOD) << "Muon " << muonIndex   << " Station " << pair.first << " in Sector " << pair.second << " ";
+      //   }
+      //   muonIndex++;
+      // }
 
       cout << endl;
 
@@ -997,8 +940,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   muon_dtSeg_Station_.clear();
   muon_dtSeg_Sector_.clear();
-  muon_dtSeg_rPhi_stationSector_.clear();
-  muon_dtSeg_rZ_stationSector_.clear();
+  //muon_dtSeg_rPhi_stationSector_.clear();
+  //muon_dtSeg_rZ_stationSector_.clear();
   
 }
 
@@ -1099,6 +1042,8 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_dtSeg_globZ",      &muon_dtSeg_globZ_);
   outputTree_ -> Branch ( "muon_dtSeg_eta",        &muon_dtSeg_eta_);
   outputTree_ -> Branch ( "muon_dtSeg_phi",        &muon_dtSeg_phi_);
+  outputTree_ -> Branch( "muon_dtSeg_Station_",    &muon_dtSeg_Station_);
+  outputTree_ -> Branch( "muon_dtSeg_Sector_",      &muon_dtSeg_Sector_);
 
   outputTree_ -> Branch ( "simHit_n",          &simHit_n_);
   outputTree_ -> Branch ( "simHit_globX",      &simHit_globX_);
@@ -1109,11 +1054,8 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_avgEtaFromDTseg",       &muon_avgEtaFromDTseg_);
   outputTree_ -> Branch ( "muon_avgPhiFromDTseg",       &muon_avgPhiFromDTseg_);
 
-    outputTree_ -> Branch( "muon_rPhiSeg_correlationFactor",        &muon_rPhiSeg_correlationFactor_);
+  outputTree_ -> Branch( "muon_rPhiSeg_correlationFactor",        &muon_rPhiSeg_correlationFactor_);
   outputTree_ -> Branch( "muon_rZSeg_correlationFactor",          &muon_rZSeg_correlationFactor_);
-
-  outputTree_ -> Branch( "muon_dtSeg_rPhi_stationSector",    &muon_dtSeg_rPhi_stationSector_);
-  outputTree_ -> Branch( "muon_dtSeg_rZ_stationSector",      &muon_dtSeg_rZ_stationSector_);
   
   outputTree_ -> Branch ( "muon_comb_ndof",             &muon_comb_ndof_);
   outputTree_ -> Branch ( "muon_comb_timeAtIpInOut",    &muon_comb_timeAtIpInOut_);
