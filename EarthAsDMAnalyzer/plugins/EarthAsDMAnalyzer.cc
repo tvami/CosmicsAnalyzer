@@ -771,9 +771,10 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       muon_dtSeg_rZ_t0timing_.clear();
 
     
-    
-    float dRGenMuonFromAvg = deltaR((*genColl)[1].eta(),(*genColl)[1].phi(),muonAvgEtaFromDTseg,muonAvgPhiFromDTseg);
-    if (verbose_ > 3) LogPrint(MOD)  << "  >> muonAvgEtaFromDTseg = " << muonAvgEtaFromDTseg << " muonAvgPhiFromDTseg = "  << muonAvgPhiFromDTseg << " dRGenMuonFromAvg = " << dRGenMuonFromAvg;
+    if (!isData_) {
+      float dRGenMuonFromAvg = deltaR((*genColl)[1].eta(),(*genColl)[1].phi(),muonAvgEtaFromDTseg,muonAvgPhiFromDTseg);
+      if (verbose_ > 3) LogPrint(MOD)  << "  >> muonAvgEtaFromDTseg = " << muonAvgEtaFromDTseg << " muonAvgPhiFromDTseg = "  << muonAvgPhiFromDTseg << " dRGenMuonFromAvg = " << dRGenMuonFromAvg;
+    }
     muon_avgEtaFromDTseg_.push_back(muonAvgEtaFromDTseg);
     muon_avgPhiFromDTseg_.push_back(muonAvgPhiFromDTseg);
     
