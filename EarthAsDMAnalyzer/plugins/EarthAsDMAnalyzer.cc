@@ -132,6 +132,7 @@ private:
   bool     HLT_L1SingleMuOpen_;
   bool     HLT_L1SingleMuOpen_DT_;
   bool     HLT_L1SingleMuCosmics_;
+  bool     HLT_Random_;
   
   // Variables that are at event level are numbers (e.g. uint)
   unsigned int gen_n_;
@@ -248,6 +249,11 @@ private:
   std::vector<float> track_eta_;
   std::vector<float> track_pt_;
   std::vector<float> track_ptErr_;
+  std::vector<float> track_chi2_;
+  std::vector<float> track_ndof_;
+  std::vector<int>   track_charge_;
+  std::vector<int>   track_numberOfValidHits_;
+  std::vector<float> track_validFraction_;
 
 };
 
@@ -424,6 +430,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   HLT_L1SingleMuOpen_              = false;
   HLT_L1SingleMuOpen_DT_           = false;
   HLT_L1SingleMuCosmics_           = false;
+  HLT_Random_                      = false;
 
   if (verbose_ > 5) LogPrint(MOD) << "The following triggers pass in this event: ";
   for (unsigned int i = 0; i < triggerH->size(); i++) {
@@ -446,6 +453,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       HLT_L1SingleMuOpen_DT_ = true;
     if (TString(triggerNames.triggerName(i)).Contains("HLT_L1SingleMuCosmics_v") && triggerH->accept(i))
       HLT_L1SingleMuCosmics_ = true;
+    if (TString(triggerNames.triggerName(i)).Contains("HLT_Random_v") && triggerH->accept(i))
+      HLT_Random_ = true;
           
   }
 
@@ -835,6 +844,11 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     track_eta_.push_back(track.eta());
     track_pt_.push_back(track.pt());
     track_ptErr_.push_back(track.ptError());
+    track_chi2_.push_back(track.chi2());
+    track_ndof_.push_back(track.ndof());
+    track_charge_.push_back(track.charge());
+    track_numberOfValidHits_.push_back(track.numberOfValidHits());
+    track_validFraction_.push_back(track.validFraction());
 
     track_n_++;
     
@@ -942,6 +956,12 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   track_eta_.clear();
   track_pt_.clear();
   track_ptErr_.clear();
+  track_chi2_.clear();
+  track_ndof_.clear();
+  track_charge_.clear();
+  track_numberOfValidHits_.clear();
+  track_validFraction_.clear();
+
 
   muon_dtSeg_Station_.clear();
   muon_dtSeg_Sector_.clear();
@@ -970,6 +990,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "HLT_L1SingleMuOpen",    &HLT_L1SingleMuOpen_) ;
   outputTree_ -> Branch ( "HLT_L1SingleMuOpen_DT", &HLT_L1SingleMuOpen_DT_) ;
   outputTree_ -> Branch ( "HLT_L1SingleMuCosmics", &HLT_L1SingleMuCosmics_) ;
+  outputTree_ -> Branch ( "HLT_Random",            &HLT_Random_) ;
   
   outputTree_ -> Branch ( "gen_n",            &gen_n_) ;
   outputTree_ -> Branch ( "gen_pdg",          &gen_pdg_);
@@ -1078,6 +1099,11 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch( "track_eta",        &track_eta_);
   outputTree_ -> Branch( "track_pt",         &track_pt_);
   outputTree_ -> Branch( "track_ptErr",      &track_ptErr_);
+  outputTree_ -> Branch( "track_chi2",       &track_chi2_);
+  outputTree_ -> Branch( "track_ndof",       &track_ndof_);
+  outputTree_ -> Branch( "track_charge",     &track_charge_);
+  outputTree_ -> Branch( "track_numberOfValidHits", &track_numberOfValidHits_);
+  outputTree_ -> Branch( "track_validFraction",   &track_validFraction_);
 //
 }
 
