@@ -169,10 +169,19 @@ private:
   std::vector<int>   muon_quality_;
 
   std::vector<bool> muon_hasMatchedGenTrack_;
+  std::vector<float> muon_fromGenTrack_Vx_;
+  std::vector<float> muon_fromGenTrack_Vy_;
+  std::vector<float> muon_fromGenTrack_Vz_;
   std::vector<float> muon_fromGenTrack_Pt_;
   std::vector<float> muon_fromGenTrack_PtErr_;
   std::vector<float> muon_fromGenTrack_Eta_;
   std::vector<float> muon_fromGenTrack_Phi_;
+  std::vector<float> muon_fromGenTrack_Chi2_;
+  std::vector<float> muon_fromGenTrack_Ndof_;
+  std::vector<int>   muon_fromGenTrack_Charge_;
+  std::vector<int>   muon_fromGenTrack_NumValidHits_;
+  std::vector<float> muon_fromGenTrack_ValidFraction_;
+
 
   std::vector<float> muon_d0_;
   std::vector<float> muon_d0Err_;
@@ -225,15 +234,11 @@ private:
   std::vector<float> simHit_globZ_;
   std::vector<float> simHit_tof_;
 
-  std::vector<float> muon_r2_;
   std::vector<float> muon_dtSeg_rPhi_globY_; //dtGlobalPointYValues
   std::vector<float> muon_dtSeg_rPhi_t0timing_; //t0timingValues
   std::vector<float> muon_dtSeg_rPhi_t0timingCorrected_; //t0timingCorrectedValues
   std::vector<float> muon_dtSeg_rZ_globY_; //dtGlobalPointYValues_Ztiming
   std::vector<float> muon_dtSeg_rZ_t0timing_;
-
-  std::vector<float> muon_rPhiSeg_correlationFactor_;
-  std::vector<float> muon_rZSeg_correlationFactor_;
   
   std::vector<int> muon_dtSeg_Station_;
   std::vector<int> muon_dtSeg_Sector_;
@@ -257,9 +262,7 @@ private:
 
 };
 
-//
-// constructors and destructor
-//
+// Constructor
 EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  verbose_(iConfig.getUntrackedParameter<int>("verbosityLevel")),
  hasGen_(iConfig.getUntrackedParameter<int>("hasGen")),
@@ -282,17 +285,13 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
   
 }
 
-
+// Destructor
 EarthAsDMAnalyzer::~EarthAsDMAnalyzer()  = default;
 
-//
-// member functions
-//
-
-  float mean(const std::vector<float>& data);
-  float calculateRSquared(const std::vector<float>& x, const std::vector<float>& y);
-  float pearsonCorrelation(const std::vector<float>& x, const std::vector<float>& y);
-
+// Member functions
+float mean(const std::vector<float>& data);
+float calculateRSquared(const std::vector<float>& x, const std::vector<float>& y);
+float pearsonCorrelation(const std::vector<float>& x, const std::vector<float>& y);
 
 // ------------ method called for each event  ------------
 void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -464,7 +463,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   muon_n_ = 0;
   for (unsigned int i = 0; i < muonCollectionHandle->size(); i++) {
-    if (verbose_ > 2) LogPrint(MOD) << "\n  Analyzing track " << i ;
+    if (verbose_ > 2) LogPrint(MOD) << "\n  Analyzing muon collection " << i ;
     reco::MuonRef muon  = reco::MuonRef( muonCollectionHandle, i );
     muon_pt_.push_back( muon->pt());
     // muon_ptErr_.push_back( muon->ptError());  // reco::Muon doesn't have func ptErr()
@@ -501,6 +500,15 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     float genTrackPtErr = -9999.; 
     float genTrackEta = -9999.;
     float genTrackPhi = -9999.;
+    float genTrackVx = -9999.;
+    float genTrackVy = -9999.;
+    float genTrackVz = -9999.;
+    float genTrackChi2_ = -9999.;
+    float genTrackNdof_ = -9999.;
+    int   genTrackCharge_ = -9999;
+    int   genTrackNumberOfValidHits_ = -9999;
+    float genTrackValidFraction_ = -9999.;
+
     reco::TrackRef innertrack = muon->innerTrack();
     if(innertrack.isNonnull()) {
       if (verbose_ > 2) LogPrint(MOD) << "  >> muon inner track exists: key " << innertrack.key()
@@ -517,18 +525,37 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
                                           << " eta " << genTrackRef->eta()
                                           << " phi " << genTrackRef->phi();
           hasMatchedGenTrack = 1;
+          genTrackVx = genTrackRef->vx();
+          genTrackVy = genTrackRef->vy();
+          genTrackVz = genTrackRef->vz();
           genTrackPt = genTrackRef->pt();
           genTrackPtErr = genTrackRef->ptError();
           genTrackEta = genTrackRef->eta();
           genTrackPhi = genTrackRef->phi();
+          genTrackChi2_ = genTrackRef->chi2();
+          genTrackNdof_ = genTrackRef->ndof();
+          genTrackCharge_ = genTrackRef->charge();
+          genTrackNumberOfValidHits_ = genTrackRef->numberOfValidHits();
+          genTrackValidFraction_ = genTrackRef->validFraction();
+          break; // break loop on general track
         }
       } // end loop on general track
-    }
+    } // end if innertrack isNonnull
+
+    // store matched general track variables
     muon_hasMatchedGenTrack_.push_back( hasMatchedGenTrack );
+    muon_fromGenTrack_Vx_.push_back( genTrackVx );
+    muon_fromGenTrack_Vy_.push_back( genTrackVy );
+    muon_fromGenTrack_Vz_.push_back( genTrackVz );
     muon_fromGenTrack_Pt_.push_back( genTrackPt );
     muon_fromGenTrack_PtErr_.push_back( genTrackPtErr );
     muon_fromGenTrack_Eta_.push_back( genTrackEta );
     muon_fromGenTrack_Phi_.push_back( genTrackPhi );
+    muon_fromGenTrack_Chi2_.push_back( genTrackChi2_ );
+    muon_fromGenTrack_Ndof_.push_back( genTrackNdof_ );
+    muon_fromGenTrack_Charge_.push_back( genTrackCharge_ );
+    muon_fromGenTrack_NumValidHits_.push_back( genTrackNumberOfValidHits_ );
+    muon_fromGenTrack_ValidFraction_.push_back( genTrackValidFraction_ );
 
     // Calculate the transverse impact parameter (d0) of the muon with respect to the highest sum pt vertex
     // TAV: FYI this has no meaning in cosmics
@@ -600,8 +627,8 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     if (verbose_ > 2) LogPrint(MOD) << "  >> muon_vx_ " << muon->vx() << " muon_vy_ " << muon->vy() << " muon_vz_ " << muon->vz();
 
         
-//    const reco::MuonTime time = muon->time();
-//    const reco::MuonTime rpcTime = muon->rpcTime();
+    //    const reco::MuonTime time = muon->time();
+    //    const reco::MuonTime rpcTime = muon->rpcTime();
     float muonAvgEtaFromDTseg = 9999.;
     float muonAvgPhiFromDTseg = 9999.;
     float muonSumEtaFromDTseg = 0.;
@@ -704,18 +731,12 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       muon_dtSeg_n_.push_back( dtSeg_n);
       if (verbose_ > 3) LogPrint(MOD)  << "  >> This track had " << dtSeg_n << " segments";
     } // end condition on muon having valid match
+
     // muon_dtSeg_globX_.push_back( muon_dtSeg_t0timing_ ) ;
     if (dtSeg_n > 0) {
       muonAvgEtaFromDTseg = muonSumEtaFromDTseg / dtSeg_n;
       muonAvgPhiFromDTseg = muonSumPhiFromDTseg / dtSeg_n;
       
-      float rSquared = calculateRSquared( muon_dtSeg_rPhi_globY_, muon_dtSeg_rPhi_t0timingCorrected_);
-      // Store the R-squared value in the rSquaredValues vector
-      muon_r2_.push_back( rSquared);
-
-      float PearsonCorrelation = pearsonCorrelation(muon_dtSeg_rPhi_globY_, muon_dtSeg_rPhi_t0timingCorrected_);
-        muon_rPhiSeg_correlationFactor_.push_back( PearsonCorrelation);
-
       // for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
       //   muon_dtSeg_rPhi_stationSector_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
       // }
@@ -731,12 +752,6 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       // cout << endl;
       } // end condition on having at least one DT segment
 
-
-
-      float PearsonCorrelation_Z = pearsonCorrelation(muon_dtSeg_rZ_globY_, muon_dtSeg_rZ_t0timing_);
-      muon_rZSeg_correlationFactor_.push_back( PearsonCorrelation_Z);
-
-
       // for (size_t i = 0; i < muon_dtSeg_Station_.size(); ++i) {
       //   muon_dtSeg_rZ_stationSector_.push_back(std::make_pair(muon_dtSeg_Station_[i], muon_dtSeg_Sector_[i]));
       // }
@@ -750,32 +765,6 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       // }
 
       // cout << endl;
-
-      if (verbose_ > 2) LogPrint(MOD) << "muon_rPhiSeg_correlationFactor:";
-      string PearsonValuesStr;
-      for (float value : muon_rPhiSeg_correlationFactor_) {
-          PearsonValuesStr += to_string(value) + " ";
-      }
-      if (verbose_ > 2) LogPrint(MOD) << PearsonValuesStr << endl;
-
-
-
-      if (verbose_ > 2) LogPrint(MOD) << "muon_rZSeg_correlationFactor:";
-      string PearsonValues_Z_Str;
-      for (float value : muon_rZSeg_correlationFactor_) {
-          PearsonValues_Z_Str += to_string(value) + " ";
-      }
-      if (verbose_ > 2) LogPrint(MOD) << PearsonValues_Z_Str << endl;
-
-
-      if (verbose_ > 2) LogPrint(MOD) << "muon_r2:";
-      string rSquaredStr;
-      for (float value : muon_r2_) {
-          rSquaredStr += to_string(value) + " ";
-      }
-      if (verbose_ > 2) LogPrint(MOD) << rSquaredStr << endl;
-
-
 
       muon_dtSeg_rPhi_globY_.clear();
       muon_dtSeg_rPhi_t0timing_.clear();
@@ -836,7 +825,9 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   //------------------------------------------------------------------
   
   track_n_ = 0;
+  if (verbose_ > 2) LogPrint(MOD) << "\n Going into the track collection loop, size = " << trackCollectionHandle->size() ;
   for (const auto& track : *trackCollectionHandle) {
+    if (verbose_ > 2) LogPrint(MOD) << "\n  Analyzing track " << track_n_ ;
     track_vx_.push_back(track.vx());
     track_vy_.push_back(track.vy());
     track_vz_.push_back(track.vz());
@@ -852,7 +843,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
     track_n_++;
     
-  }
+  } // end of general track collection loop
 
   // Fill the tree
   outputTree_->Fill();
@@ -895,6 +886,11 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   muon_fromGenTrack_PtErr_.clear();
   muon_fromGenTrack_Eta_.clear();
   muon_fromGenTrack_Phi_.clear();
+  muon_fromGenTrack_Chi2_.clear();
+  muon_fromGenTrack_Ndof_.clear();
+  muon_fromGenTrack_Charge_.clear();
+  muon_fromGenTrack_NumValidHits_.clear();
+  muon_fromGenTrack_ValidFraction_.clear();
   
   muon_d0_.clear();
   muon_d0Err_.clear();
@@ -945,10 +941,6 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   simHit_globZ_.clear();
   simHit_tof_.clear();
   
-  muon_r2_.clear();
-  muon_rPhiSeg_correlationFactor_.clear();
-  muon_rZSeg_correlationFactor_.clear();
-
   track_vx_.clear();
   track_vy_.clear();
   track_vz_.clear();
@@ -1016,9 +1008,6 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_energy",      &muon_energy_);
   outputTree_ -> Branch ( "muon_charge",      &muon_charge_);
   outputTree_ -> Branch ( "muon_chi2",        &muon_chi2_);
-  outputTree_ -> Branch ( "muon_r2",           &muon_r2_);
-
-
 
   outputTree_ -> Branch ( "muon_isLoose",     &muon_isLoose_);
   outputTree_ -> Branch ( "muon_isMedium",    &muon_isMedium_);
@@ -1030,10 +1019,20 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_quality",     &muon_quality_);
 
   outputTree_ -> Branch ( "muon_hasMatchedGenTrack", &muon_hasMatchedGenTrack_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Vx",    &muon_fromGenTrack_Vx_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Vy",    &muon_fromGenTrack_Vy_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Vz",    &muon_fromGenTrack_Vz_);
   outputTree_ -> Branch ( "muon_fromGenTrack_Pt",    &muon_fromGenTrack_Pt_);
   outputTree_ -> Branch ( "muon_fromGenTrack_PtErr", &muon_fromGenTrack_PtErr_);
   outputTree_ -> Branch ( "muon_fromGenTrack_Eta",   &muon_fromGenTrack_Eta_);
   outputTree_ -> Branch ( "muon_fromGenTrack_Phi",   &muon_fromGenTrack_Phi_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Chi2",  &muon_fromGenTrack_Chi2_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Ndof",  &muon_fromGenTrack_Ndof_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_Charge",&muon_fromGenTrack_Charge_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_NumValidHits",
+                                               &muon_fromGenTrack_NumValidHits_);
+  outputTree_ -> Branch ( "muon_fromGenTrack_ValidFraction",
+                                                &muon_fromGenTrack_ValidFraction_);
 
   outputTree_ -> Branch ( "muon_d0",          &muon_d0_);
   outputTree_ -> Branch ( "muon_d0Err",       &muon_d0Err_);
@@ -1079,9 +1078,6 @@ void EarthAsDMAnalyzer::beginJob() {
 
   outputTree_ -> Branch ( "muon_avgEtaFromDTseg",       &muon_avgEtaFromDTseg_);
   outputTree_ -> Branch ( "muon_avgPhiFromDTseg",       &muon_avgPhiFromDTseg_);
-
-  outputTree_ -> Branch( "muon_rPhiSeg_correlationFactor",        &muon_rPhiSeg_correlationFactor_);
-  outputTree_ -> Branch( "muon_rZSeg_correlationFactor",          &muon_rZSeg_correlationFactor_);
   
   outputTree_ -> Branch ( "muon_comb_ndof",             &muon_comb_ndof_);
   outputTree_ -> Branch ( "muon_comb_timeAtIpInOut",    &muon_comb_timeAtIpInOut_);
