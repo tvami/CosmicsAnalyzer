@@ -9,6 +9,7 @@
 
  Implementation:
      Oct 8: moved everything to vectors instead of arrays
+     Febr 13, 2026: added the number of valid hits in the tracker variable
 */
 //
 // Original Author:  Tamas Almos Vami
@@ -195,6 +196,7 @@ private:
   std::vector<float> muon_neutralHadIso_;
 
   std::vector<float> muon_validFractionTrackerHits_;
+  std::vector<int>   muon_numberOfValidHits_;
   std::vector<float> muon_normChi2_;
   std::vector<float> muon_chi2LocalPosition_;
   std::vector<float> muon_kinkFinder_;
@@ -565,6 +567,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     muon_dZ_.push_back( bestTrack->dz(highestSumPt2Vertex.position()));
 
     muon_validFractionTrackerHits_.push_back( (muon->innerTrack().isNonnull() ? muon->track()->validFraction() : -99.0));
+    muon_numberOfValidHits_.push_back( (muon->innerTrack().isNonnull() ? muon->track()->numberOfValidHits() : -99));
 
     muon_pileupIso_.push_back( muon->pfIsolationR04().sumPUPt);
     muon_chargedIso_.push_back( muon->pfIsolationR04().sumChargedHadronPt);
@@ -903,6 +906,7 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   muon_neutralHadIso_.clear();
   
   muon_validFractionTrackerHits_.clear();
+  muon_numberOfValidHits_.clear();
   muon_normChi2_.clear();
   muon_chi2LocalPosition_.clear();
   muon_kinkFinder_.clear();
@@ -1044,6 +1048,7 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "muon_neutralHadIso", &muon_neutralHadIso_);
   outputTree_ -> Branch ( "muon_validFractionTrackerHits",
                                                 &muon_validFractionTrackerHits_);
+  outputTree_ -> Branch ( "muon_numberOfValidHits", &muon_numberOfValidHits_);
 
   outputTree_ -> Branch ( "muon_tuneP_Pt",      &muon_tuneP_Pt_);
   outputTree_ -> Branch ( "muon_tuneP_PtErr",   &muon_tuneP_PtErr_);
