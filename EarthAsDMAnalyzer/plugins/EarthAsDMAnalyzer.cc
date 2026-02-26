@@ -153,7 +153,7 @@ private:
   std::vector<int> gen_daughter_n_;
   std::vector<int> gen_daughter_pdg_;
   
-  unsigned int      muon_n_;
+  unsigned int       muon_n_;
   std::vector<float> muon_pt_;
   std::vector<float> muon_p_;
   std::vector<float> muon_eta_;
@@ -248,7 +248,7 @@ private:
   //std::vector<std::pair<int, int>> muon_dtSeg_rZ_stationSector_;
 
   // general tracks
-  int                track_n_;
+  unsigned int       track_n_;
   std::vector<float> track_vx_;
   std::vector<float> track_vy_;
   std::vector<float> track_vz_;
