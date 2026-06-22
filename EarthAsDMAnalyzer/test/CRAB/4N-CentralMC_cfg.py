@@ -73,7 +73,8 @@ process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
     #muonCollection = cms.InputTag("lhcSTAMuons"),
     #muonCollection = cms.InputTag("muons1Leg"),
     hasGen = cms.untracked.int32(0),
-    hasSim = cms.untracked.int32(0)
+    hasSim = cms.untracked.int32(0),
+    isData = cms.untracked.int32(0)  # MC: use nominal 3.8 T (DCS current is dummy in MC)
     #hasGen = cms.untracked.int32(1)
 )
 

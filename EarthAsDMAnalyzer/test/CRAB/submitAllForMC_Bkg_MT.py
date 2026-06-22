@@ -35,7 +35,7 @@ config.JobType.numCores = 1
 config.section_('Data')
 config.Data.inputDBS = 'global'
 config.Data.inputDataset = 'MINTA'
-config.Data.outLFNDirBase = '/ceph/cms/store/user/tvami/EarthAsDM/Ntuples/Ntuples_v5.0.0'
+config.Data.outLFNDirBase = '/store/user/tvami/EarthAsDM/Ntuples/Ntuples_v5.0.0'
 config.Data.splitting = 'FileBased'
 config.Data.unitsPerJob = 1
 config.Data.ignoreLocality = True

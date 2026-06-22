@@ -3,6 +3,7 @@
 <use name="DataFormats/MuonReco"/>
 <use name="DataFormats/L1Trigger"/>
 <use name="DataFormats/L1DTTrackFinder"/>
+<use name="DataFormats/OnlineMetaData"/>
 <use name="DataFormats/DTRecHit"/>
 <use name="FWCore/Framework"/>
 <use name="FWCore/ParameterSet"/>

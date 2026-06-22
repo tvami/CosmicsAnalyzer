@@ -23,7 +23,7 @@ The ntuplizer is tagged in git (`git tag`). Each version adds branches on top of
 | v2 | 2025-11-11 | More general-track info, and the `HLT_Random` trigger (PR #17) |
 | v3 | 2025-11-12 | Extra info on the muon-to-general-track match (`muon_fromGenTrack_*`), removed the R-squared variable (PR #18) |
 | v4 | 2026-02-13 | Number of valid tracker hits on the muon object (`muon_numberOfValidHits`); `track_n` made `uint` (PR #19) |
-| v5 | 2026-06-22 | L1 trigger info for the per-hemisphere L1 trigger-efficiency measurement on cosmics: uGMT muon candidates (`L1muon_*`) and L1 DT Local Trigger primitives (`dtTrigPh_*`, one per DT chamber, with chamber global position for hemisphere assignment) |
+| v5 | 2026-06-22 | L1 trigger info for the per-hemisphere L1 trigger-efficiency measurement on cosmics: uGMT muon candidates (`L1muon_*`) and L1 DT Local Trigger primitives (`dtTrigPh_*`, one per DT chamber, with chamber global position for hemisphere assignment). Also the magnetic field `bField` [T]: in data read from the online DCS magnet current (so B-off runs show ~0), in MC the nominal 3.8 T (set `isData=0` for MC, the DCS current is dummy there) |
 
 ## Per-hemisphere L1 DT trigger efficiency (`L1TriggerEfficiency.py`)
 

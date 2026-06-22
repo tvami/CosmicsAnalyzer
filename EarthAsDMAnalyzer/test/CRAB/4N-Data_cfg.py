@@ -68,7 +68,8 @@ process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
     #muonCollection = cms.InputTag("lhcSTAMuons"),
     #muonCollection = cms.InputTag("muons1Leg"),
     hasSim = cms.untracked.int32(0),
-    hasGen = cms.untracked.int32(0)
+    hasGen = cms.untracked.int32(0),
+    isData = cms.untracked.int32(1)  # data: read B field from the DCS magnet current
 )
 
 process.TFileService = cms.Service("TFileService",

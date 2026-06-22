@@ -47,7 +47,15 @@ datasetList = [
     "/Cosmics/Run2026A-CosmicTP-PromptReco-v1/RAW-RECO",
     "/Cosmics/Run2026B-CosmicTP-PromptReco-v1/RAW-RECO",
     "/Cosmics/Run2026C-CosmicTP-PromptReco-v1/RAW-RECO",
-    "/Cosmics/Run2026D-CosmicTP-PromptReco-v1/RAW-RECO"
+    "/Cosmics/Run2026D-CosmicTP-PromptReco-v1/RAW-RECO",
+    "/Cosmics/Commissioning2021-CosmicTP-PromptReco-v1/RAW-RECO",
+    "/Cosmics/Commissioning2022-CosmicTP-PromptReco-v1/RAW-RECO",
+    "/Cosmics/Commissioning2023-CosmicTP-PromptReco-v1/RAW-RECO",
+    "/Cosmics/Commissioning2023-CosmicTP-PromptReco-v2/RAW-RECO",
+    "/Cosmics/Commissioning2024-CosmicTP-PromptReco-v1/RAW-RECO",
+    "/Cosmics/Commissioning2025-CosmicTP-PromptReco-v1/RAW-RECO",
+    "/Cosmics/Commissioning2025-CosmicTP-PromptReco-v2/RAW-RECO",
+    "/Cosmics/Commissioning2026-CosmicTP-PromptReco-v1/RAW-RECO"
 ]
 
 if not os.path.exists("submittedConfigs"): os.makedirs("submittedConfigs")
@@ -77,7 +85,7 @@ config.JobType.numCores = 1
 config.section_('Data')
 config.Data.inputDBS = 'global'
 config.Data.inputDataset = 'MINTA'
-config.Data.outLFNDirBase = '/ceph/cms/store/user/tvami/EarthAsDM/Ntuples/Ntuples_v5.0.0/' #Change this
+config.Data.outLFNDirBase = '/store/user/tvami/EarthAsDM/Ntuples/Ntuples_v5.0.0/' #Change this
 config.Data.splitting = 'FileBased'
 config.Data.unitsPerJob = 1
 config.Data.ignoreLocality = True

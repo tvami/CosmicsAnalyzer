@@ -53,6 +53,7 @@
 #include "DataFormats/L1Trigger/interface/Muon.h"
 #include "DataFormats/L1DTTrackFinder/interface/L1MuDTChambPhContainer.h"
 #include "DataFormats/L1DTTrackFinder/interface/L1MuDTChambPhDigi.h"
+#include "DataFormats/OnlineMetaData/interface/DCSRecord.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/MuonDetId/interface/DTChamberId.h"
 #include "DataFormats/MuonDetId/interface/DTLayerId.h"
@@ -103,6 +104,7 @@ private:
   int verbose_;
   int hasGen_;
   int hasSim_;
+  int isData_;
   edm::EDGetTokenT< std::vector<reco::GenParticle> > genParticlesToken_;
   edm::EDGetTokenT<std::vector<reco::Muon>> muonToken_;
   edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;
@@ -120,6 +122,7 @@ private:
   edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
   edm::EDGetTokenT<l1t::MuonBxCollection> l1MuonToken_;
   edm::EDGetTokenT<L1MuDTChambPhContainer> dtTrigPhToken_;
+  edm::EDGetTokenT<DCSRecord> dcsToken_;
   edm::EDGetTokenT<std::vector<reco::Track>> tracksToken_;
   
   TFile* outputFile_;
@@ -128,6 +131,12 @@ private:
   unsigned int runNumber_;
   unsigned int lsNumber_;
   uint32_t eventNumber_;
+
+  // Magnetic field at the centre of CMS, in Tesla. For data it is read from the
+  // online DCS record (DCSRecord::magneticField(), from the magnet current), so a
+  // B-off run shows ~0; for MC it defaults to the nominal 3.8 T. This lets one
+  // identify B-off cosmic data independently of the magnetic-field/GT configuration.
+  float    bField_;
 
   // trigger variable (event level)
   bool     HLT_L1SingleMu3_;
@@ -311,6 +320,7 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  verbose_(iConfig.getUntrackedParameter<int>("verbosityLevel")),
  hasGen_(iConfig.getUntrackedParameter<int>("hasGen")),
  hasSim_(iConfig.getUntrackedParameter<int>("hasSim")),
+ isData_(iConfig.getUntrackedParameter<int>("isData")),
  muonToken_(consumes<std::vector<reco::Muon>>(iConfig.getParameter<edm::InputTag>("muonCollection"))),
  muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("muonTimeCollection"))),
  PSimHitContainerToken_(consumes<edm::PSimHitContainer>(iConfig.getParameter<edm::InputTag>("PSimHitContainer"))),
@@ -323,12 +333,13 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  triggerResultsToken_(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("TriggerResults"))),
  l1MuonToken_(consumes<l1t::MuonBxCollection>(iConfig.getParameter<edm::InputTag>("l1MuonCollection"))),
  dtTrigPhToken_(consumes<L1MuDTChambPhContainer>(iConfig.getParameter<edm::InputTag>("dtTrigPhiCollection"))),
+ dcsToken_(consumes<DCSRecord>(iConfig.getParameter<edm::InputTag>("dcsRecord"))),
  tracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("trackCollection")))
 {
   if (hasGen_ == 1) {
     genParticlesToken_ = mayConsume< std::vector<reco::GenParticle> >( edm::InputTag("genParticles") );
   }
-  
+
 }
 
 // Destructor
@@ -351,6 +362,21 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   
   if (verbose_ > 1) LogPrint(MOD) << "\n\n---------------------------------------------------------------\nAnalyzing runNumber "
     << runNumber_ << " lsNumber " << lsNumber_ << " eventNumber " << eventNumber_;
+
+  //------------------------------------------------------------------
+  // Magnetic field [T]. In data it is read from the online DCS record (derived
+  // from the magnet current), so a B-off run gives ~0 independently of the
+  // magnetic-field/GT configuration. MC also ships a DCS record but with a dummy
+  // (zero) current, so we cannot rely on it there: for MC (isData=0) we keep the
+  // nominal 3.8 T instead.
+  //------------------------------------------------------------------
+  bField_ = 3.8f;
+  if (isData_ == 1) {
+    const edm::Handle<DCSRecord> dcsH = iEvent.getHandle(dcsToken_);
+    bField_ = dcsH.isValid() ? dcsH->magneticField() : -1.f;
+    if (verbose_ > 2 && dcsH.isValid()) LogPrint(MOD) << "  >> DCS magnetCurrent "
+      << dcsH->magnetCurrent() << " A -> bField " << bField_ << " T";
+  }
 
 
   //------------------------------------------------------------------
@@ -1124,7 +1150,8 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_->Branch("run",    &runNumber_);
   outputTree_->Branch("ls",     &lsNumber_);
   outputTree_->Branch("event",  &eventNumber_);
-  
+  outputTree_->Branch("bField", &bField_);
+
   outputTree_ -> Branch ( "HLT_L1SingleMu3",       &HLT_L1SingleMu3_) ;
   outputTree_ -> Branch ( "HLT_L1SingleMu5",       &HLT_L1SingleMu5_) ;
   outputTree_ -> Branch ( "HLT_L1SingleMu7",       &HLT_L1SingleMu7_) ;
@@ -1294,6 +1321,8 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   ->setComment("1 means GEN exists, 0 means not");
   desc.addUntracked("hasSim", 1)
   ->setComment("1 means SimHits exists, 0 means not");
+  desc.addUntracked("isData", 1)
+  ->setComment("1 = data (read B field from the DCS magnet current), 0 = MC (use nominal 3.8 T)");
 //  desc.add("muonCollection", edm::InputTag("splitMuons")) //muons1Leg
 //  desc.add("muonCollection", edm::InputTag("lhcSTAMuons"))
   desc.add("muonCollection", edm::InputTag("splitMuons"))
@@ -1309,6 +1338,9 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   desc.add("dtTrigPhiCollection", edm::InputTag("bmtfDigis"))
   ->setComment("L1 DT Local Trigger primitives (phi view) for per-hemisphere trigger efficiency; "
                "needs the bmtfDigis unpacker in the path when running on RAW(-RECO)");
+  desc.add("dcsRecord", edm::InputTag("onlineMetaDataDigis"))
+  ->setComment("Online DCS record; used in data to read the magnet current / B field. "
+               "Absent in MC, where bField defaults to the nominal 3.8 T");
   desc.add("trackCollection", edm::InputTag("tevMuons:default:RECO"))
   ->setComment("TeV muon collection");
 
