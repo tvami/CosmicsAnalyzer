@@ -15,12 +15,13 @@ import sys, os
 
 options = VarParsing('analysis')
 #options.register('GTAG', '106X_upgrade2018_realistic_v11BasedCandidateTmp_2022_08_09_01_32_34',
-options.register('GTAG', '130X_mcRun3_2022cosmics_realistic_deco_v5',
+options.register('GTAG', '140X_mcRun3_2024cosmics_realistic_deco_v14',
     VarParsing.multiplicity.singleton,
     VarParsing.varType.string,
     "Global Tag"
 )
 options.parseArguments()
+
 
 process = cms.Process("MyAnalyzer")
 process.load("FWCore.MessageService.MessageLogger_cfi")
@@ -29,10 +30,14 @@ process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.load('Configuration.StandardSequences.Services_cff')
-# Re-unpack the DT Local Trigger primitives (BMTF input) from RAW so that the
-# per-hemisphere L1 trigger efficiency can be measured (dtTrigPh_* branches).
-# The dttfDigis L1MuDTChambPhContainer is empty in Run 3 RAW-RECO, so we use bmtfDigis.
-process.load('EventFilter.L1TRawToDigi.bmtfDigis_cfi')
+# MC has no DT trigger primitives stored, so re-emulate them from the DT digis
+# for the per-hemisphere L1 trigger efficiency (dtTrigPh_* branches).
+process.load('L1Trigger.DTTrigger.dtTriggerPrimitiveDigis_cfi')
+process.dtTriggerPrimitiveDigis.digiTag = cms.InputTag("muonDTDigis")
+
+# process.options = cms.untracked.PSet(
+#   TryToContinue = cms.untracked.vstring('ProductNotFound')
+# )
 
 process.source = cms.Source("PoolSource",
   #fileNames = cms.untracked.vstring("file:/ceph/cms/store/user/lbrennan/EarthAsDM/Cosmics/crab_RAWtoReco-0to75Theta-4to3000GeV-126X_mcRun3_2022cosmics_realistic_deco_v1_v4/230811_215634/0000/3RR-0to75Theta-4to3000GeV_35.root")
@@ -40,13 +45,12 @@ process.source = cms.Source("PoolSource",
 #    fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")
     # fileNames = cms.untracked.vstring("file:/home/users/dazhang/works/CosmicMuonSim/RAW-RECO/TRK-Run3Winter23Reco-00009-0to75-100000events.root")
     # fileNames = cms.untracked.vstring("file:/home/users/dazhang/works/CosmicMuonSim/CMSSW_12_6_5/src/TRK-Run3Winter23Reco-00009.root")
-    fileNames = cms.untracked.vstring("file:/home/users/smasanam/EarthAsDMProject/high_pT_event_root_files/738d9c82-8d19-40d0-8533-e5fba7e5ef9c.root")
-    # fileNames = cms.untracked.vstring("file:Run2025B_ExpressCosmics_FEVT_R391553_F0240cbd7.root")
+    fileNames = cms.untracked.vstring("file:fab4f964-058e-4fe1-b250-0838167532d1.root")
     #fileNames = cms.untracked.vstring("file:/ceph/cms/store/user/lbrennan/EarthAsDM/Cosmics/crab_RAWtoReco-91to180Theta-3000to4000GeV-126X_mcRun3_2022cosmics_realistic_deco_v1_v4/230811_215442/0000/3RR-91to180Theta-3000to4000GeV_78.root")
 )
 #    fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")
 
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(100))
 
 #Structure: ('run num, event num, ls num')
 #process.source.eventsToProcess = cms.untracked.VEventRange('1:276500:27649928')
@@ -64,12 +68,13 @@ process.muonPhiAnalyzer = cms.EDAnalyzer("EarthAsDMAnalyzer",
     #muonCollection = cms.InputTag("splitMuons"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
     muonCollection = cms.InputTag("muons"),
     muonTimeCollection = cms.InputTag("muons","dt"), #muons, lhcSTAMuons, splitMuons, or muons1Leg
-    dtTrigPhiCollection = cms.InputTag("bmtfDigis"), # DT trigger primitives, re-unpacked below
+    dtTrigPhiCollection = cms.InputTag("dtTriggerPrimitiveDigis"), # emulated DT trigger primitives
     #PSimHitContainer = cms.InputTag("g4SimHits","MuonDTHits"),
     #muonCollection = cms.InputTag("lhcSTAMuons"),
     #muonCollection = cms.InputTag("muons1Leg"),
-    hasSim = cms.untracked.int32(0),
-    hasGen = cms.untracked.int32(0)
+    hasGen = cms.untracked.int32(0),
+    hasSim = cms.untracked.int32(0)
+    #hasGen = cms.untracked.int32(1)
 )
 
 process.TFileService = cms.Service("TFileService",
@@ -77,7 +82,7 @@ process.TFileService = cms.Service("TFileService",
     # fileName = cms.string("ntuple_data.root")
     # fileName = cms.string("ntuple_MC_theta0to75_100kEvts.root")
     # fileName = cms.string("ntuple_MC_theta0to75_100Evts.root")
-    fileName = cms.string("Ntuplizer-Cosmics-Data.root")
+    fileName = cms.string("Ntuplizer-Cosmics-MC.root")
 )
 
-process.p = cms.Path(process.bmtfDigis * process.muonPhiAnalyzer)
+process.p = cms.Path(process.dtTriggerPrimitiveDigis * process.muonPhiAnalyzer)

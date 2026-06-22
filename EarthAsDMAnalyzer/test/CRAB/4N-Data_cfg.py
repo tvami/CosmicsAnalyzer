@@ -29,9 +29,9 @@ process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.load('Configuration.StandardSequences.Services_cff')
-# Re-unpack the DT Local Trigger primitives (BMTF input) from RAW so that the
-# per-hemisphere L1 trigger efficiency can be measured (dtTrigPh_* branches).
-# The dttfDigis L1MuDTChambPhContainer is empty in Run 3 RAW-RECO, so we use bmtfDigis.
+# Re-unpack the DT Local Trigger primitives (BMTF input) from RAW for the
+# per-hemisphere L1 trigger efficiency (dtTrigPh_* branches). The dttfDigis
+# L1MuDTChambPhContainer is empty in Run 3 RAW-RECO, so we use bmtfDigis.
 process.load('EventFilter.L1TRawToDigi.bmtfDigis_cfi')
 
 process.source = cms.Source("PoolSource",
@@ -40,8 +40,7 @@ process.source = cms.Source("PoolSource",
 #    fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")
     # fileNames = cms.untracked.vstring("file:/home/users/dazhang/works/CosmicMuonSim/RAW-RECO/TRK-Run3Winter23Reco-00009-0to75-100000events.root")
     # fileNames = cms.untracked.vstring("file:/home/users/dazhang/works/CosmicMuonSim/CMSSW_12_6_5/src/TRK-Run3Winter23Reco-00009.root")
-    fileNames = cms.untracked.vstring("file:/home/users/smasanam/EarthAsDMProject/high_pT_event_root_files/738d9c82-8d19-40d0-8533-e5fba7e5ef9c.root")
-    # fileNames = cms.untracked.vstring("file:Run2025B_ExpressCosmics_FEVT_R391553_F0240cbd7.root")
+    fileNames = cms.untracked.vstring("file://Cosmics/Run2025B-CosmicTP-PromptReco-v1/RAW-RECO")
     #fileNames = cms.untracked.vstring("file:/ceph/cms/store/user/lbrennan/EarthAsDM/Cosmics/crab_RAWtoReco-91to180Theta-3000to4000GeV-126X_mcRun3_2022cosmics_realistic_deco_v1_v4/230811_215442/0000/3RR-91to180Theta-3000to4000GeV_78.root")
 )
 #    fileNames = cms.untracked.vstring("file:00f26807-549d-45cf-844f-351e3a270f0e.root")

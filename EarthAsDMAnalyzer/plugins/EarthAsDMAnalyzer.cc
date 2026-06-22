@@ -50,6 +50,9 @@
 #include "DataFormats/DTRecHit/interface/DTRecSegment4DCollection.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/L1Trigger/interface/Muon.h"
+#include "DataFormats/L1DTTrackFinder/interface/L1MuDTChambPhContainer.h"
+#include "DataFormats/L1DTTrackFinder/interface/L1MuDTChambPhDigi.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/MuonDetId/interface/DTChamberId.h"
 #include "DataFormats/MuonDetId/interface/DTLayerId.h"
@@ -115,6 +118,8 @@ private:
   edm::ESGetToken<DTT0, DTT0Rcd> t0Token_;
   edm::ESGetToken<DTTtrig, DTTtrigRcd> ttrigToken_;
   edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
+  edm::EDGetTokenT<l1t::MuonBxCollection> l1MuonToken_;
+  edm::EDGetTokenT<L1MuDTChambPhContainer> dtTrigPhToken_;
   edm::EDGetTokenT<std::vector<reco::Track>> tracksToken_;
   
   TFile* outputFile_;
@@ -134,7 +139,44 @@ private:
   bool     HLT_L1SingleMuOpen_DT_;
   bool     HLT_L1SingleMuCosmics_;
   bool     HLT_Random_;
-  
+
+  // L1 trigger muon candidates (unpacked uGMT output)
+  // Needed for the per-hemisphere L1 trigger efficiency tag-and-probe study:
+  // require an L1 muon in one hemisphere (denominator) and check whether the
+  // other hemisphere also has an L1 muon firing (numerator).
+  // The hemisphere (upper/lower) can be derived offline from L1muon_phi (or
+  // L1muon_phiAtVtx): phi in (0,pi) -> upper, phi in (-pi,0) -> lower.
+  unsigned int       L1muon_n_;
+  std::vector<float> L1muon_pt_;
+  std::vector<float> L1muon_eta_;
+  std::vector<float> L1muon_phi_;
+  std::vector<float> L1muon_etaAtVtx_;
+  std::vector<float> L1muon_phiAtVtx_;
+  std::vector<int>   L1muon_charge_;
+  std::vector<int>   L1muon_hwQual_;
+  std::vector<int>   L1muon_bx_;
+  std::vector<int>   L1muon_tfMuonIndex_;
+
+  // L1 DT Local Trigger primitives (phi view, one per DT chamber).
+  // Unlike the merged uGMT muon (one per cosmic), these fire per chamber, so a
+  // cosmic crossing both hemispheres produces primitives in the upper and lower
+  // chambers separately. This is what enables the per-hemisphere L1 trigger
+  // efficiency tag-and-probe (cf. CMS cosmic commissioning paper, JINST 5 T03002).
+  // The hemisphere is taken from the chamber global Y (dtTrigPh_globY > 0 upper).
+  unsigned int       dtTrigPh_n_;
+  std::vector<int>   dtTrigPh_wheel_;
+  std::vector<int>   dtTrigPh_station_;
+  std::vector<int>   dtTrigPh_sector_;
+  std::vector<int>   dtTrigPh_bx_;
+  std::vector<int>   dtTrigPh_quality_;
+  std::vector<int>   dtTrigPh_phi_;
+  std::vector<int>   dtTrigPh_phiB_;
+  std::vector<float> dtTrigPh_globX_;
+  std::vector<float> dtTrigPh_globY_;
+  std::vector<float> dtTrigPh_globZ_;
+  std::vector<float> dtTrigPh_globEta_;
+  std::vector<float> dtTrigPh_globPhi_;
+
   // Variables that are at event level are numbers (e.g. uint)
   unsigned int gen_n_;
   // The size of these vectors will be gen_n_
@@ -279,6 +321,8 @@ EarthAsDMAnalyzer::EarthAsDMAnalyzer(const edm::ParameterSet& iConfig) :
  t0Token_(esConsumes()),
  ttrigToken_(esConsumes()),
  triggerResultsToken_(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("TriggerResults"))),
+ l1MuonToken_(consumes<l1t::MuonBxCollection>(iConfig.getParameter<edm::InputTag>("l1MuonCollection"))),
+ dtTrigPhToken_(consumes<L1MuDTChambPhContainer>(iConfig.getParameter<edm::InputTag>("dtTrigPhiCollection"))),
  tracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("trackCollection")))
 {
   if (hasGen_ == 1) {
@@ -456,7 +500,88 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       HLT_L1SingleMuCosmics_ = true;
     if (TString(triggerNames.triggerName(i)).Contains("HLT_Random_v") && triggerH->accept(i))
       HLT_Random_ = true;
-          
+
+  }
+
+  //------------------------------------------------------------------
+  // L1 trigger muon candidates (unpacked uGMT output)
+  // Stored to allow the per-hemisphere L1 trigger efficiency measurement on
+  // cosmic muons that cross both hemispheres.
+  //------------------------------------------------------------------
+  edm::Handle<l1t::MuonBxCollection> l1MuonHandle;
+  iEvent.getByToken(l1MuonToken_, l1MuonHandle);
+
+  L1muon_n_ = 0;
+  if (l1MuonHandle.isValid()) {
+    for (int bx = l1MuonHandle->getFirstBX(); bx <= l1MuonHandle->getLastBX(); ++bx) {
+      for (auto it = l1MuonHandle->begin(bx); it != l1MuonHandle->end(bx); ++it) {
+        L1muon_pt_.push_back(it->pt());
+        L1muon_eta_.push_back(it->eta());
+        L1muon_phi_.push_back(it->phi());
+        L1muon_etaAtVtx_.push_back(it->etaAtVtx());
+        L1muon_phiAtVtx_.push_back(it->phiAtVtx());
+        L1muon_charge_.push_back(it->charge());
+        L1muon_hwQual_.push_back(it->hwQual());
+        L1muon_bx_.push_back(bx);
+        L1muon_tfMuonIndex_.push_back(it->tfMuonIndex());
+        if (verbose_ > 3) LogPrint(MOD) << "  >> L1 muon bx " << bx << " pT " << it->pt()
+          << " eta " << it->eta() << " phi " << it->phi() << " hwQual " << it->hwQual();
+        L1muon_n_++;
+      }
+    }
+  } else if (verbose_ > 2) {
+    LogPrint(MOD) << "  >> L1 muon collection not found / not valid";
+  }
+
+  //------------------------------------------------------------------
+  // L1 DT Local Trigger primitives (phi view), one per DT chamber.
+  // These fire per chamber, so they can be split into upper/lower hemispheres
+  // for the per-hemisphere L1 trigger efficiency measurement.
+  //------------------------------------------------------------------
+  edm::Handle<L1MuDTChambPhContainer> dtTrigPhHandle;
+  iEvent.getByToken(dtTrigPhToken_, dtTrigPhHandle);
+
+  dtTrigPh_n_ = 0;
+  if (dtTrigPhHandle.isValid()) {
+    const L1MuDTChambPhContainer::Phi_Container* phiData = dtTrigPhHandle->getContainer();
+    for (const auto& phiDigi : *phiData) {
+      // Empty/filler primitives are flagged with code() == 7
+      if (phiDigi.code() == 7) continue;
+      int wheel   = phiDigi.whNum();
+      int station = phiDigi.stNum();
+      int sector  = phiDigi.scNum() + 1;  // scNum is 0-11, DTChamberId sector is 1-12
+
+      float globX = 9999, globY = 9999, globZ = 9999, globEta = 9999, globPhi = 9999;
+      DTChamberId chamberId(wheel, station, sector);
+      const GeomDet* chamberDet = muonDTGeom->idToDet(chamberId);
+      if (chamberDet != nullptr) {
+        GlobalPoint chamberPos = chamberDet->position();
+        globX = chamberPos.x();
+        globY = chamberPos.y();
+        globZ = chamberPos.z();
+        globEta = chamberPos.eta();
+        globPhi = chamberPos.phi();
+      }
+
+      dtTrigPh_wheel_.push_back(wheel);
+      dtTrigPh_station_.push_back(station);
+      dtTrigPh_sector_.push_back(sector);
+      dtTrigPh_bx_.push_back(phiDigi.bxNum());
+      dtTrigPh_quality_.push_back(phiDigi.code());
+      dtTrigPh_phi_.push_back(phiDigi.phi());
+      dtTrigPh_phiB_.push_back(phiDigi.phiB());
+      dtTrigPh_globX_.push_back(globX);
+      dtTrigPh_globY_.push_back(globY);
+      dtTrigPh_globZ_.push_back(globZ);
+      dtTrigPh_globEta_.push_back(globEta);
+      dtTrigPh_globPhi_.push_back(globPhi);
+      if (verbose_ > 3) LogPrint(MOD) << "  >> DT trig prim wh/st/sec " << wheel << "/" << station
+        << "/" << sector << " bx " << phiDigi.bxNum() << " code " << phiDigi.code()
+        << " globY " << globY;
+      dtTrigPh_n_++;
+    }
+  } else if (verbose_ > 2) {
+    LogPrint(MOD) << "  >> DT trigger primitive collection not found / not valid";
   }
 
   //------------------------------------------------------------------
@@ -852,6 +977,29 @@ void EarthAsDMAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   outputTree_->Fill();
   
   // Clear the vectors
+  L1muon_pt_.clear();
+  L1muon_eta_.clear();
+  L1muon_phi_.clear();
+  L1muon_etaAtVtx_.clear();
+  L1muon_phiAtVtx_.clear();
+  L1muon_charge_.clear();
+  L1muon_hwQual_.clear();
+  L1muon_bx_.clear();
+  L1muon_tfMuonIndex_.clear();
+
+  dtTrigPh_wheel_.clear();
+  dtTrigPh_station_.clear();
+  dtTrigPh_sector_.clear();
+  dtTrigPh_bx_.clear();
+  dtTrigPh_quality_.clear();
+  dtTrigPh_phi_.clear();
+  dtTrigPh_phiB_.clear();
+  dtTrigPh_globX_.clear();
+  dtTrigPh_globY_.clear();
+  dtTrigPh_globZ_.clear();
+  dtTrigPh_globEta_.clear();
+  dtTrigPh_globPhi_.clear();
+
   gen_pdg_.clear();
   gen_energy_.clear();
   gen_pt_.clear();
@@ -987,7 +1135,32 @@ void EarthAsDMAnalyzer::beginJob() {
   outputTree_ -> Branch ( "HLT_L1SingleMuOpen_DT", &HLT_L1SingleMuOpen_DT_) ;
   outputTree_ -> Branch ( "HLT_L1SingleMuCosmics", &HLT_L1SingleMuCosmics_) ;
   outputTree_ -> Branch ( "HLT_Random",            &HLT_Random_) ;
-  
+
+  outputTree_ -> Branch ( "L1muon_n",          &L1muon_n_) ;
+  outputTree_ -> Branch ( "L1muon_pt",         &L1muon_pt_) ;
+  outputTree_ -> Branch ( "L1muon_eta",        &L1muon_eta_) ;
+  outputTree_ -> Branch ( "L1muon_phi",        &L1muon_phi_) ;
+  outputTree_ -> Branch ( "L1muon_etaAtVtx",   &L1muon_etaAtVtx_) ;
+  outputTree_ -> Branch ( "L1muon_phiAtVtx",   &L1muon_phiAtVtx_) ;
+  outputTree_ -> Branch ( "L1muon_charge",     &L1muon_charge_) ;
+  outputTree_ -> Branch ( "L1muon_hwQual",     &L1muon_hwQual_) ;
+  outputTree_ -> Branch ( "L1muon_bx",         &L1muon_bx_) ;
+  outputTree_ -> Branch ( "L1muon_tfMuonIndex",&L1muon_tfMuonIndex_) ;
+
+  outputTree_ -> Branch ( "dtTrigPh_n",        &dtTrigPh_n_) ;
+  outputTree_ -> Branch ( "dtTrigPh_wheel",    &dtTrigPh_wheel_) ;
+  outputTree_ -> Branch ( "dtTrigPh_station",  &dtTrigPh_station_) ;
+  outputTree_ -> Branch ( "dtTrigPh_sector",   &dtTrigPh_sector_) ;
+  outputTree_ -> Branch ( "dtTrigPh_bx",       &dtTrigPh_bx_) ;
+  outputTree_ -> Branch ( "dtTrigPh_quality",  &dtTrigPh_quality_) ;
+  outputTree_ -> Branch ( "dtTrigPh_phi",      &dtTrigPh_phi_) ;
+  outputTree_ -> Branch ( "dtTrigPh_phiB",     &dtTrigPh_phiB_) ;
+  outputTree_ -> Branch ( "dtTrigPh_globX",    &dtTrigPh_globX_) ;
+  outputTree_ -> Branch ( "dtTrigPh_globY",    &dtTrigPh_globY_) ;
+  outputTree_ -> Branch ( "dtTrigPh_globZ",    &dtTrigPh_globZ_) ;
+  outputTree_ -> Branch ( "dtTrigPh_globEta",  &dtTrigPh_globEta_) ;
+  outputTree_ -> Branch ( "dtTrigPh_globPhi",  &dtTrigPh_globPhi_) ;
+
   outputTree_ -> Branch ( "gen_n",            &gen_n_) ;
   outputTree_ -> Branch ( "gen_pdg",          &gen_pdg_);
   outputTree_ -> Branch ( "gen_pt",           &gen_pt_);
@@ -1131,6 +1304,11 @@ void EarthAsDMAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   ->setComment("Input collection for g4SimHits Hit information");
   desc.add("TriggerResults", edm::InputTag("TriggerResults","","HLT"))
   ->setComment("HLTrigger results");
+  desc.add("l1MuonCollection", edm::InputTag("gmtStage2Digis","Muon"))
+  ->setComment("L1 (uGMT) muon candidates for per-hemisphere trigger efficiency");
+  desc.add("dtTrigPhiCollection", edm::InputTag("bmtfDigis"))
+  ->setComment("L1 DT Local Trigger primitives (phi view) for per-hemisphere trigger efficiency; "
+               "needs the bmtfDigis unpacker in the path when running on RAW(-RECO)");
   desc.add("trackCollection", edm::InputTag("tevMuons:default:RECO"))
   ->setComment("TeV muon collection");
 
